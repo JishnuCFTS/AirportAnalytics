@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airport Intelligence Platform</title>
+<style>:root{
+  --bg:#F3F5F9; --card:#FFFFFF; --ink:#0F172A; --ink2:#334155; --muted:#64748B; --line:#E2E8F0; --line2:#CBD5E1;
+  --good:#15803D; --good-bg:#DCFCE7; --watch:#B45309; --watch-bg:#FEF3C7; --bad:#B91C1C; --bad-bg:#FEE2E2; --info:#1D4ED8; --info-bg:#DBEAFE;
+  --c-home:#0F172A; --c-passenger:#2563EB; --c-security:#7C3AED; --c-workforce:#0D9488; --c-assets:#D97706;
+  --c-facilities:#16A34A; --c-retail:#DB2777; --c-disruption:#EA580C; --c-ask:#4F46E5;
+  --accent:var(--c-home);
+  --radius:14px; --shadow:0 1px 2px rgba(15,23,42,.05),0 4px 16px rgba(15,23,42,.06);
+  --rail:15rem;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:clamp(12px,0.8vw,18px);-webkit-font-smoothing:antialiased}
+body{font-family:"Segoe UI",Inter,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.35;overflow:hidden;height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+h1,h2,h3{font-weight:650;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- layout ---------- */
+#app{display:grid;grid-template-columns:var(--rail) 1fr;height:100vh}
+.rail{background:#0B1220;color:#CBD5E1;display:flex;flex-direction:column;padding:1.2rem .9rem;gap:.2rem}
+.brand{display:flex;align-items:center;gap:.7rem;padding:.4rem .5rem 1.2rem}
+.brand .logo{width:2.4rem;height:2.4rem;border-radius:.7rem;background:linear-gradient(135deg,#4F46E5,#06B6D4);display:grid;place-items:center;color:#fff;font-weight:800;font-size:1.1rem}
+.brand .name{font-weight:700;color:#fff;font-size:.98rem;line-height:1.1}
+.brand .sub{font-size:.72rem;color:#94A3B8;margin-top:.15rem}
+.nav button{display:flex;align-items:center;gap:.7rem;width:100%;padding:.62rem .7rem;border-radius:.6rem;color:#CBD5E1;font-size:.95rem;font-weight:500;text-align:left}
+.nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav button.active{background:rgba(255,255,255,.12);color:#fff}
+.nav .dot{width:.55rem;height:.55rem;border-radius:50%;background:var(--dc,#94A3B8);flex:none}
+.nav .k{margin-left:auto;font-size:.68rem;color:#64748B;font-family:ui-monospace,Menlo,monospace}
+.rail .spacer{flex:1}
+.askcta{display:flex;align-items:center;gap:.7rem;background:linear-gradient(135deg,#4F46E5,#7C3AED);color:#fff;padding:.8rem .9rem;border-radius:.8rem;font-weight:600;width:100%}
+.askcta small{display:block;font-weight:400;font-size:.72rem;opacity:.85}
+.rail .foot{font-size:.68rem;color:#64748B;padding:.9rem .4rem 0;line-height:1.4}
+
+.main{display:flex;flex-direction:column;min-width:0;height:100vh}
+.topbar{display:flex;align-items:center;gap:1rem;padding:.9rem 1.8rem;border-bottom:1px solid var(--line);background:#fff}
+.topbar h1{font-size:1.35rem}
+.topbar .crumb{color:var(--muted);font-size:.9rem}
+.topbar .conn{margin-left:auto;display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:var(--muted);background:#fff;border:1px solid var(--line);padding:.4rem .8rem;border-radius:99px;white-space:nowrap}
+.topbar .conn b{color:var(--ink);font-weight:650}
+.topbar .conn i{width:.55rem;height:.55rem;border-radius:50%;background:#22C55E;display:inline-block}
+.topbar .conn .sep{color:var(--line2)}
+.topbar .conn:hover{background:var(--bg)}
+.topbar .live{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--ink2);background:var(--bg);padding:.4rem .8rem;border-radius:99px}
+.topbar .live i{width:.55rem;height:.55rem;border-radius:50%;background:#22C55E;box-shadow:0 0 0 3px #BBF7D0;display:inline-block}
+.topbar .bell{position:relative;padding:.45rem .6rem;border-radius:.6rem;border:1px solid var(--line)}
+.bellwrap{position:relative}
+.alertpanel{position:absolute;top:calc(100% + .6rem);right:0;width:34rem;background:#fff;border-radius:.9rem;box-shadow:0 12px 40px rgba(15,23,42,.18),0 0 0 1px var(--line);padding:.6rem;display:none;z-index:40}
+.alertpanel.on{display:block}
+.alertpanel .ph{display:flex;align-items:center;justify-content:space-between;padding:.5rem .7rem .6rem;font-size:.8rem;color:var(--muted)}
+.alertpanel .ph b{color:var(--ink);font-size:.95rem;font-weight:650}
+.alertpanel .alert{width:100%;margin-bottom:.4rem}
+.alertpanel .alert:last-child{margin-bottom:0}
+.topbar .gear{padding:.45rem .6rem;border-radius:.6rem;border:1px solid var(--line);font-size:1rem;line-height:1}
+.topbar .gear:hover,.topbar .bell:hover{background:var(--bg)}
+.topbar .bell b{position:absolute;top:-.35rem;right:-.35rem;background:var(--bad);color:#fff;font-size:.65rem;padding:.05rem .35rem;border-radius:99px}
+.page{flex:1;overflow:auto;padding:1.3rem 1.8rem 1.6rem;display:flex;flex-direction:column}
+
+/* ---------- cards ---------- */
+.grid{display:grid;gap:1.1rem}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:1.05rem 1.2rem;display:flex;flex-direction:column;min-width:0}
+.card h3{font-size:1rem;color:var(--ink);display:flex;align-items:center;gap:.5rem}
+.card h3 .tag{margin-left:auto}
+.card .sub{color:var(--muted);font-size:.82rem;margin-top:.15rem}
+.card .body{flex:1;margin-top:.7rem;min-height:0;display:flex;flex-direction:column}
+.chart-slot{position:relative;flex:1;min-height:0;width:100%}
+.chart-slot svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tag{font-size:.7rem;font-weight:600;padding:.18rem .55rem;border-radius:99px;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}
+.tag.forecast{background:#EEF2FF;color:#4338CA}
+.tag.live{background:var(--good-bg);color:var(--good)}
+.tag.good{background:var(--good-bg);color:var(--good)}
+.tag.watch{background:var(--watch-bg);color:var(--watch)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)}
+.tag.info{background:var(--info-bg);color:var(--info)}
+.tag.neutral{background:#F1F5F9;color:var(--ink2)}
+
+/* AI commentary */
+.ai{margin-top:.8rem;background:linear-gradient(180deg,#F5F3FF,#F8F7FF);border:1px solid #E0E7FF;border-radius:.7rem;padding:.65rem .8rem;font-size:.86rem;color:#1E1B4B;display:flex;gap:.6rem;align-items:flex-start;line-height:1.4}
+.ai .sp{flex:none;width:1.35rem;height:1.35rem;border-radius:.4rem;background:linear-gradient(135deg,#4F46E5,#8B5CF6);display:grid;place-items:center;color:#fff;font-size:.75rem;font-weight:700;margin-top:.05rem}
+.ai b{font-weight:650}
+
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem}
+.kpi{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:.9rem 1.1rem}
+.kpi .l{font-size:.8rem;color:var(--muted);font-weight:500}
+.kpi .v{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;margin-top:.15rem;line-height:1.1}
+.kpi .v small{font-size:.9rem;color:var(--muted);font-weight:500;margin-left:.2rem}
+.kpi .d{font-size:.8rem;margin-top:.3rem;color:var(--ink2)}
+.up{color:var(--good)} .down{color:var(--bad)} .flat{color:var(--muted)}
+
+/* Home tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:1rem;margin-top:1rem;flex:1;min-height:0}
+.tile{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:1.1rem 1.2rem;text-align:left;display:flex;flex-direction:column;gap:.35rem;border-top:4px solid var(--tc);transition:transform .15s,box-shadow .15s;min-height:0}
+.tile:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(15,23,42,.12)}
+.tile .t{display:flex;align-items:center;gap:.6rem;font-weight:650;font-size:1.02rem}
+.tile .ic{width:2rem;height:2rem;border-radius:.55rem;background:color-mix(in srgb,var(--tc) 14%,white);color:var(--tc);display:grid;place-items:center;font-size:1rem}
+.tile .v{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-top:.2rem}
+.tile .v small{font-size:.85rem;color:var(--muted);font-weight:500;margin-left:.3rem}
+.tile .spark{flex:1;min-height:2.6rem;max-height:6.5rem;margin:.3rem 0;display:flex;flex-direction:column}
+.tile .fc{display:flex;align-items:center;gap:.5rem;font-size:.88rem;color:var(--ink2)}
+.tile .fc span:last-child{flex:1}
+.tile .ins{font-size:.9rem;color:var(--ink2);border-top:1px solid var(--line);padding-top:.5rem;margin-top:auto;display:flex;gap:.45rem;line-height:1.35}
+.tile .ins .sp{flex:none;width:1.1rem;height:1.1rem;border-radius:.3rem;background:linear-gradient(135deg,#4F46E5,#8B5CF6);color:#fff;font-size:.62rem;font-weight:700;display:grid;place-items:center;margin-top:.1rem}
+.tile.ask{background:linear-gradient(135deg,#1E1B4B,#312E81 60%,#4338CA);color:#fff;border-top-color:#818CF8}
+.tile.ask .ic{background:rgba(255,255,255,.15);color:#fff}
+.tile.ask .ins{color:#C7D2FE;border-top-color:rgba(255,255,255,.15)}
+.tile.ask .fc{color:#C7D2FE}
+.tile.ask .qs{display:flex;flex-direction:column;gap:.4rem;margin-top:.3rem;flex:1;justify-content:center}
+.tile.ask .qs span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:.45rem .7rem;border-radius:.5rem;font-size:.9rem}
+
+/* home header */
+.hero{display:flex;align-items:flex-end;gap:1.5rem;margin-bottom:1rem}
+.hero h2{font-size:1.6rem}
+.hero .when{color:var(--ink2);font-size:.98rem;margin-top:.2rem;font-weight:500}
+.hero .what{color:var(--muted);font-size:.9rem;margin-top:.1rem}
+.hero .src{margin-left:auto;display:flex;align-items:center;gap:.6rem;font-size:.8rem;color:var(--muted);background:#fff;padding:.45rem .8rem;border-radius:.6rem;box-shadow:var(--shadow);white-space:nowrap}
+.hero .src b{color:var(--ink);font-weight:650}
+.alert{display:flex;align-items:center;gap:.8rem;padding:.65rem .9rem;border-radius:.8rem;background:#fff;box-shadow:var(--shadow);cursor:pointer;text-align:left;font-size:.88rem;line-height:1.35;color:var(--ink)}
+.alert .lv{flex:none;font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.22rem .5rem;border-radius:.35rem}
+.alert.high{background:#FFF5F5}.alert.high .lv{background:#FEE2E2;color:#B91C1C}
+.alert.medium{background:#FFFBEB}.alert.medium .lv{background:#FEF3C7;color:#B45309}
+.alert.low .lv{background:#DBEAFE;color:#1D4ED8}
+.alert .go{margin-left:auto;flex:none;color:var(--muted);font-size:.78rem;white-space:nowrap}
+.alert:hover .go{color:var(--info)}
+/* module band */
+.band{display:grid;grid-template-columns:1fr 1fr 1.35fr;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.band .seg{padding:.95rem 1.2rem;display:flex;flex-direction:column;gap:.35rem;min-width:0}
+.band .seg+.seg{border-left:1px solid var(--line)}
+.band .k{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:650;display:flex;align-items:center;gap:.45rem}
+.band .k i{width:.5rem;height:.5rem;border-radius:50%;display:inline-block}
+.band .now .k i{background:#22C55E;box-shadow:0 0 0 3px #DCFCE7}
+.band .next .k i{background:#4F46E5;box-shadow:0 0 0 3px #E0E7FF}
+.band .t{font-size:.98rem;line-height:1.45}
+.band .t b{font-weight:650}
+.band .act{background:#0F172A;color:#E2E8F0;border-left:0 !important}
+.band .act .k{color:#FBBF24}
+.band .act .k i{background:#FBBF24;box-shadow:0 0 0 3px rgba(251,191,36,.25)}
+.band .act .t b{color:#fff}
+.mod{display:grid;grid-template-rows:1fr 1fr auto;gap:1.1rem;flex:1;min-height:0}
+.mod>.grid{min-height:0}
+.mod .card{overflow:hidden}
+.mod .card .body{overflow:auto;scrollbar-width:thin}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;padding:.35rem .5rem;border-bottom:1px solid var(--line)}
+td{padding:.38rem .5rem;border-bottom:1px solid #F1F5F9;vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.bar{height:.5rem;background:#EEF2F7;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.health{display:inline-flex;align-items:center;gap:.4rem}
+.health .bar{width:4.5rem}
+
+/* chart svg */
+svg.chart{width:100%;height:100%;display:block;overflow:visible}
+svg.chart text{font-family:inherit;fill:var(--muted)}
+.legend{display:flex;gap:1rem;font-size:.76rem;color:var(--muted);margin-top:.4rem;flex-wrap:wrap}
+.legend i{display:inline-block;width:.8rem;height:.2rem;border-radius:2px;margin-right:.3rem;vertical-align:middle}
+.legend i.dash{background:repeating-linear-gradient(90deg,currentColor 0 .2rem,transparent .2rem .35rem)}
+
+/* list rows */
+.rows{display:flex;flex-direction:column;gap:.4rem}
+.row{display:flex;align-items:center;gap:.8rem;padding:.4rem .7rem;border-radius:.6rem;background:#F8FAFC;font-size:.88rem}
+.row .n{width:1.6rem;height:1.6rem;border-radius:50%;background:#fff;border:1px solid var(--line2);display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none}
+.row .m{flex:1;min-width:0}.row .m small{display:block;color:var(--muted);font-size:.78rem}
+.row .s{font-weight:700;font-size:1rem}
+
+/* funnel */
+.funnel{display:flex;flex-direction:column;gap:.25rem}
+.funnel .f{display:grid;grid-template-columns:11rem 1fr 4.5rem;gap:.7rem;align-items:center;font-size:.86rem}
+.funnel .f .b{height:1.35rem;border-radius:.35rem;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 55%,white));display:flex;align-items:center;padding-left:.5rem;color:#fff;font-size:.74rem;font-weight:600;min-width:2.5rem}
+.funnel .f small{color:var(--muted);display:block;font-size:.72rem}
+
+/* heatmap */
+.hm{display:grid;grid-template-columns:7rem repeat(24,1fr);gap:2px;font-size:.7rem;align-items:center}
+.hm .z{color:var(--ink2);font-weight:600;padding-right:.4rem;font-size:.76rem}
+.hm .c{aspect-ratio:1.4;border-radius:3px}
+.hm .h{text-align:center;color:var(--muted)}
+
+/* cascade */
+.casc{display:flex;flex-direction:column;gap:.55rem}
+.cs{display:grid;grid-template-columns:2rem 7rem 1fr 1fr;gap:.8rem;align-items:start;padding:.6rem .7rem;border-radius:.6rem;background:#F8FAFC;font-size:.86rem;border-left:4px solid var(--sc)}
+.cs .st{width:1.7rem;height:1.7rem;border-radius:50%;background:var(--sc);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.8rem}
+.cs .ar{font-weight:650}
+.cs .ac{color:#065F46;background:#ECFDF5;padding:.35rem .55rem;border-radius:.4rem;font-size:.82rem}
+
+/* ---------- ASK ---------- */
+.askpage{display:grid;grid-template-columns:19rem 1fr;gap:1.2rem;flex:1;min-height:0}
+.askpage .side{display:flex;flex-direction:column;gap:.6rem;min-height:0}
+.askpage .side h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:.4rem 0 .1rem}
+.askpage .side .q{background:#fff;box-shadow:var(--shadow);border-radius:.7rem;padding:.65rem .8rem;text-align:left;font-size:.86rem;line-height:1.35;border-left:3px solid var(--qc,#4F46E5)}
+.askpage .side .q:hover{background:#F5F3FF}
+.askpage .side .trained{background:linear-gradient(135deg,#1E1B4B,#4338CA);color:#fff;border-radius:.8rem;padding:.9rem 1rem;font-size:.82rem;line-height:1.4}
+.askpage .side .trained b{display:block;font-size:.95rem;margin-bottom:.25rem}
+.askpage .side .trained .srcs{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem}
+.askpage .side .trained .srcs span{background:rgba(255,255,255,.14);padding:.15rem .45rem;border-radius:.35rem;font-size:.7rem}
+.askpage .thread{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:0}
+.askpage .msgs{flex:1;overflow:auto;padding:1.2rem 1.4rem;display:flex;flex-direction:column;gap:1rem}
+.msg.u{align-self:flex-end;background:#EEF2FF;color:#1E1B4B;padding:.7rem 1rem;border-radius:1rem 1rem .25rem 1rem;max-width:70%;font-size:1rem;font-weight:500}
+.msg.a{align-self:stretch;display:grid;grid-template-columns:2.2rem 1fr;gap:.8rem}
+.msg.a .av{width:2.2rem;height:2.2rem;border-radius:.7rem;background:linear-gradient(135deg,#4F46E5,#8B5CF6);color:#fff;display:grid;place-items:center;font-weight:800;font-size:.85rem}
+.ans{display:flex;flex-direction:column;gap:.75rem;max-width:62rem}
+.ans .direct{font-size:1.08rem;line-height:1.5;color:var(--ink)}
+.ans .direct b{font-weight:650}
+.ans .sec{border:1px solid var(--line);border-radius:.7rem;padding:.7rem .9rem}
+.ans .sec h5{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.45rem;font-weight:650}
+.ans .ev{display:flex;flex-direction:column;gap:.35rem;font-size:.88rem}
+.ans .ev div{display:flex;gap:.6rem;align-items:baseline}
+.ans .ev .src{margin-left:auto;font-size:.68rem;color:var(--muted);background:#F1F5F9;padding:.1rem .45rem;border-radius:.3rem;white-space:nowrap}
+.ans .chart{height:12rem;display:flex;flex-direction:column}
+.ans .act{background:#FFFBEB;border-color:#FDE68A}
+.ans .act p{font-size:.92rem;line-height:1.45}
+.ans .fu{display:flex;gap:.5rem;flex-wrap:wrap}
+.ans .fu button{border:1px solid #C7D2FE;color:#3730A3;background:#fff;padding:.4rem .75rem;border-radius:99px;font-size:.82rem}
+.ans .fu button:hover{background:#EEF2FF}
+.ans .conf{font-size:.74rem;color:var(--muted)}
+.think{display:flex;flex-direction:column;gap:.35rem;font-size:.86rem;color:var(--ink2)}
+.think div{display:flex;align-items:center;gap:.5rem;opacity:0;animation:fadein .3s forwards}
+.think i{width:.9rem;height:.9rem;border-radius:50%;border:2px solid #C7D2FE;border-top-color:#4F46E5;animation:spin .8s linear infinite;display:inline-block}
+.think div.done i{border:0;background:var(--good);animation:none;position:relative}
+.think div.done i::after{content:"";position:absolute;left:.28rem;top:.1rem;width:.22rem;height:.45rem;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadein{to{opacity:1}}
+.askpage .inp{display:flex;gap:.6rem;padding:.9rem 1.2rem;border-top:1px solid var(--line)}
+.askpage .inp input{flex:1;font:inherit;font-size:1.05rem;padding:.75rem 1rem;border:1.5px solid var(--line2);border-radius:.8rem;outline:none}
+.askpage .inp input:focus{border-color:#4F46E5;box-shadow:0 0 0 3px #E0E7FF}
+.askpage .inp button{background:#4F46E5;color:#fff;padding:0 1.3rem;border-radius:.8rem;font-weight:600}
+.askpage .inp button.clr{background:#fff;color:var(--muted);border:1px solid var(--line2);font-weight:500}
+.ans.reveal>*{opacity:0;animation:fadein .35s forwards}
+.ans.reveal>*:nth-child(2){animation-delay:.25s}.ans.reveal>*:nth-child(3){animation-delay:.5s}.ans.reveal>*:nth-child(4){animation-delay:.75s}.ans.reveal>*:nth-child(5){animation-delay:1s}.ans.reveal>*:nth-child(6){animation-delay:1.2s}
+
+/* help overlay */
+.help{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;place-items:center;z-index:50}
+.help.on{display:grid}
+.help .box{background:#fff;border-radius:1rem;padding:1.5rem 1.8rem;width:34rem;font-size:.95rem}
+.help kbd{background:#F1F5F9;border:1px solid var(--line2);border-radius:.3rem;padding:.05rem .4rem;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
+.help .box div{display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--line)}
+
+/* ---------- data connection settings ---------- */
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;place-items:center;z-index:60;backdrop-filter:blur(2px)}
+.modal.on{display:grid}
+.cfg{background:#fff;border-radius:1rem;width:78rem;max-width:94vw;height:50rem;max-height:92vh;display:grid;grid-template-columns:15rem minmax(0,1fr);grid-template-rows:minmax(0,1fr);overflow:hidden;box-shadow:0 30px 80px rgba(15,23,42,.35)}
+.cfg .side{background:#0B1220;color:#CBD5E1;padding:1.3rem 1rem;display:flex;flex-direction:column;gap:.25rem}
+.cfg .side h4{color:#fff;font-size:1rem;padding:.2rem .6rem .9rem}
+.cfg .side h4 small{display:block;font-weight:400;color:#94A3B8;font-size:.72rem;margin-top:.2rem}
+.cfg .side button{display:flex;align-items:center;gap:.6rem;padding:.6rem .7rem;border-radius:.55rem;text-align:left;font-size:.9rem;color:#CBD5E1}
+.cfg .side button.active{background:rgba(255,255,255,.12);color:#fff}
+.cfg .side button:hover{background:rgba(255,255,255,.07)}
+.cfg .side .st{margin-top:auto;font-size:.74rem;color:#94A3B8;padding:.8rem .6rem 0;line-height:1.45;border-top:1px solid rgba(255,255,255,.08)}
+.cfg .side .st b{color:#86EFAC;font-weight:600}
+.cfg .mainc{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.cfg .head{display:flex;align-items:center;gap:1rem;padding:1.1rem 1.5rem;border-bottom:1px solid var(--line)}
+.cfg .head h3{font-size:1.15rem}
+.cfg .head p{color:var(--muted);font-size:.84rem;margin-top:.15rem}
+.cfg .head .x{margin-left:auto;font-size:1.3rem;color:var(--muted);padding:.2rem .5rem;border-radius:.4rem}
+.cfg .head .x:hover{background:var(--bg);color:var(--ink)}
+.cfg .bodyc{flex:1;min-height:0;overflow:auto;padding:1.3rem 1.5rem}
+.cfg .foot{display:flex;align-items:center;gap:.7rem;padding:.9rem 1.5rem;border-top:1px solid var(--line);background:#F8FAFC}
+.cfg .foot .note{font-size:.78rem;color:var(--muted);margin-right:auto}
+.btn{padding:.6rem 1.1rem;border-radius:.6rem;font-weight:600;font-size:.9rem;border:1px solid var(--line2);background:#fff;color:var(--ink);white-space:nowrap}
+.btn.primary{background:#4F46E5;color:#fff;border-color:#4F46E5}
+.btn.primary:disabled{opacity:.45;cursor:not-allowed}
+.btn:hover:not(:disabled){filter:brightness(.97)}
+.srcgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:1.3rem}
+.srcopt{border:1.5px solid var(--line);border-radius:.7rem;padding:.75rem .8rem;text-align:left;display:flex;align-items:center;gap:.65rem;font-size:.88rem;font-weight:600;background:#fff}
+.srcopt .mono{width:2rem;height:2rem;border-radius:.5rem;display:grid;place-items:center;font-size:.72rem;font-weight:800;color:#fff;flex:none;letter-spacing:.02em}
+.srcopt small{display:block;font-weight:400;color:var(--muted);font-size:.72rem}
+.srcopt.active{border-color:#4F46E5;background:#F5F3FF;box-shadow:0 0 0 3px #E0E7FF}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:.9rem 1.2rem}
+.form .f{display:flex;flex-direction:column;gap:.3rem}
+.form .f.w{grid-column:1/-1}
+.form label{font-size:.76rem;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+.form input,.form select{font:inherit;font-size:.92rem;padding:.6rem .75rem;border:1.5px solid var(--line2);border-radius:.55rem;outline:none;background:#fff;color:var(--ink)}
+.form input:focus,.form select:focus{border-color:#4F46E5;box-shadow:0 0 0 3px #E0E7FF}
+.form .hint{font-size:.74rem;color:var(--muted)}
+.form .sec{grid-column:1/-1;font-size:.8rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.4rem;padding-bottom:.35rem;border-bottom:1px solid var(--line)}
+.seg-ctl{display:flex;border:1.5px solid var(--line2);border-radius:.55rem;overflow:hidden}
+.seg-ctl button{flex:1;padding:.5rem;font-size:.84rem;font-weight:500}
+.seg-ctl button.active{background:#0F172A;color:#fff}
+.testlog{margin-top:1.1rem;background:#0B1220;color:#CBD5E1;border-radius:.7rem;padding:.9rem 1rem;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.8rem;line-height:1.7;min-height:7.5rem}
+.testlog div{opacity:0;animation:fadein .25s forwards}
+.testlog .ok{color:#86EFAC}.testlog .warn{color:#FCD34D}.testlog .dim{color:#64748B}
+.maptable td{font-size:.86rem}
+.pill{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.2rem .5rem;border-radius:.35rem}
+.pill.on{background:#DCFCE7;color:#15803D}.pill.off{background:#F1F5F9;color:#64748B}.pill.map{background:#EEF2FF;color:#4338CA}
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:#0F172A;color:#fff;padding:.8rem 1.2rem;border-radius:.7rem;font-size:.9rem;box-shadow:0 10px 30px rgba(0,0,0,.3);opacity:0;transition:.25s;z-index:70;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="rail">
+    <div class="brand"><div class="logo">AI</div><div><div class="name">Airport Intelligence</div><div class="sub">One place. Every question.</div></div></div>
+    <div class="nav" id="nav"></div>
+    <div class="spacer"></div>
+    <button class="askcta" onclick="go('ask')"><span style="font-size:1.2rem">&#10024;</span><span>Ask the Airport<small>Plain-language answers with evidence</small></span></button>
+    <div class="foot">Demo dataset: Meridian International (fictional). Arrow keys move between screens. Press ? for shortcuts.</div>
+  </aside>
+  <main class="main">
+    <div class="topbar"><h1 id="title">Overview</h1><span class="crumb" id="crumb"></span><button class="conn" id="conn" onclick="CFG.open()" title="Data connection"><i></i><span>Connected: <b id="connlabel"></b></span><span class="sep">|</span><span id="connmeta"></span></button><span class="live"><i></i>Live data, Wed 23 Sep 2026, 14:00</span><div class="bellwrap"><button class="bell" id="bell" onclick="ALERTS.toggle(event)" title="Alerts">&#128276;<b id="bellcount"></b></button><div class="alertpanel" id="alertpanel"></div></div><button class="gear" onclick="CFG.open()" title="Data connections and settings">&#9881;</button></div>
+    <div class="page" id="page"></div>
+  </main>
+</div>
+<div class="help" id="help" onclick="this.classList.remove('on')"><div class="box"><h3 style="margin-bottom:.8rem">Presenter shortcuts</h3><div><span>Next / previous screen</span><span><kbd>&rarr;</kbd> <kbd>&larr;</kbd> or <kbd>Space</kbd></span></div><div><span>Overview</span><span><kbd>H</kbd></span></div><div><span>Modules</span><span><kbd>1</kbd> to <kbd>7</kbd></span></div><div><span>Ask the Airport</span><span><kbd>A</kbd></span></div><div><span>This help</span><span><kbd>?</kbd></span></div></div></div>
+<script>window.DATA = {"airport":{"name":"Meridian International Airport","code":"MRD","city":"Meridian","annual_pax_m":13.5,"terminals":["T1 Domestic","T2 International"],"screening_lanes":12,"security_staff":312,"data_sources":14,"training_months":18,"today":"2026-09-23","today_label":"Wednesday 23 September 2026","now":"14:00"},"kpi":{"wait_target_min":10,"lane_tph":220,"lane_eff":0.85},"days":[{"date":"2026-09-16","dow":"Wed","offset":-7,"factor":0.95,"total":17502,"hours":[{"h":0,"pax":58,"lo":58,"hi":58,"kind":"actual"},{"h":1,"pax":27,"lo":27,"hi":27,"kind":"actual"},{"h":2,"pax":18,"lo":18,"hi":18,"kind":"actual"},{"h":3,"pax":83,"lo":83,"hi":83,"kind":"actual"},{"h":4,"pax":508,"lo":508,"hi":508,"kind":"actual"},{"h":5,"pax":1601,"lo":1601,"hi":1601,"kind":"actual"},{"h":6,"pax":1890,"lo":1890,"hi":1890,"kind":"actual"},{"h":7,"pax":1282,"lo":1282,"hi":1282,"kind":"actual"},{"h":8,"pax":903,"lo":903,"hi":903,"kind":"actual"},{"h":9,"pax":753,"lo":753,"hi":753,"kind":"actual"},{"h":10,"pax":826,"lo":826,"hi":826,"kind":"actual"},{"h":11,"pax":960,"lo":960,"hi":960,"kind":"actual"},{"h":12,"pax":968,"lo":968,"hi":968,"kind":"actual"},{"h":13,"pax":852,"lo":852,"hi":852,"kind":"actual"},{"h":14,"pax":822,"lo":822,"hi":822,"kind":"actual"},{"h":15,"pax":917,"lo":917,"hi":917,"kind":"actual"},{"h":16,"pax":1083,"lo":1083,"hi":1083,"kind":"actual"},{"h":17,"pax":1210,"lo":1210,"hi":1210,"kind":"actual"},{"h":18,"pax":1074,"lo":1074,"hi":1074,"kind":"actual"},{"h":19,"pax":661,"lo":661,"hi":661,"kind":"actual"},{"h":20,"pax":492,"lo":492,"hi":492,"kind":"actual"},{"h":21,"pax":292,"lo":292,"hi":292,"kind":"actual"},{"h":22,"pax":149,"lo":149,"hi":149,"kind":"actual"},{"h":23,"pax":73,"lo":73,"hi":73,"kind":"actual"}]},{"date":"2026-09-17","dow":"Thu","offset":-6,"factor":1.02,"total":19058,"hours":[{"h":0,"pax":65,"lo":65,"hi":65,"kind":"actual"},{"h":1,"pax":30,"lo":30,"hi":30,"kind":"actual"},{"h":2,"pax":19,"lo":19,"hi":19,"kind":"actual"},{"h":3,"pax":87,"lo":87,"hi":87,"kind":"actual"},{"h":4,"pax":553,"lo":553,"hi":553,"kind":"actual"},{"h":5,"pax":1704,"lo":1704,"hi":1704,"kind":"actual"},{"h":6,"pax":2009,"lo":2009,"hi":2009,"kind":"actual"},{"h":7,"pax":1488,"lo":1488,"hi":1488,"kind":"actual"},{"h":8,"pax":983,"lo":983,"hi":983,"kind":"actual"},{"h":9,"pax":905,"lo":905,"hi":905,"kind":"actual"},{"h":10,"pax":905,"lo":905,"hi":905,"kind":"actual"},{"h":11,"pax":1037,"lo":1037,"hi":1037,"kind":"actual"},{"h":12,"pax":1145,"lo":1145,"hi":1145,"kind":"actual"},{"h":13,"pax":962,"lo":962,"hi":962,"kind":"actual"},{"h":14,"pax":905,"lo":905,"hi":905,"kind":"actual"},{"h":15,"pax":988,"lo":988,"hi":988,"kind":"actual"},{"h":16,"pax":1233,"lo":1233,"hi":1233,"kind":"actual"},{"h":17,"pax":1215,"lo":1215,"hi":1215,"kind":"actual"},{"h":18,"pax":1075,"lo":1075,"hi":1075,"kind":"actual"},{"h":19,"pax":736,"lo":736,"hi":736,"kind":"actual"},{"h":20,"pax":484,"lo":484,"hi":484,"kind":"actual"},{"h":21,"pax":296,"lo":296,"hi":296,"kind":"actual"},{"h":22,"pax":155,"lo":155,"hi":155,"kind":"actual"},{"h":23,"pax":79,"lo":79,"hi":79,"kind":"actual"}]},{"date":"2026-09-18","dow":"Fri","offset":-5,"factor":1.12,"total":20927,"hours":[{"h":0,"pax":68,"lo":68,"hi":68,"kind":"actual"},{"h":1,"pax":33,"lo":33,"hi":33,"kind":"actual"},{"h":2,"pax":22,"lo":22,"hi":22,"kind":"actual"},{"h":3,"pax":97,"lo":97,"hi":97,"kind":"actual"},{"h":4,"pax":566,"lo":566,"hi":566,"kind":"actual"},{"h":5,"pax":1945,"lo":1945,"hi":1945,"kind":"actual"},{"h":6,"pax":2166,"lo":2166,"hi":2166,"kind":"actual"},{"h":7,"pax":1611,"lo":1611,"hi":1611,"kind":"actual"},{"h":8,"pax":1033,"lo":1033,"hi":1033,"kind":"actual"},{"h":9,"pax":967,"lo":967,"hi":967,"kind":"actual"},{"h":10,"pax":967,"lo":967,"hi":967,"kind":"actual"},{"h":11,"pax":1115,"lo":1115,"hi":1115,"kind":"actual"},{"h":12,"pax":1281,"lo":1281,"hi":1281,"kind":"actual"},{"h":13,"pax":1059,"lo":1059,"hi":1059,"kind":"actual"},{"h":14,"pax":959,"lo":959,"hi":959,"kind":"actual"},{"h":15,"pax":1099,"lo":1099,"hi":1099,"kind":"actual"},{"h":16,"pax":1376,"lo":1376,"hi":1376,"kind":"actual"},{"h":17,"pax":1458,"lo":1458,"hi":1458,"kind":"actual"},{"h":18,"pax":1181,"lo":1181,"hi":1181,"kind":"actual"},{"h":19,"pax":782,"lo":782,"hi":782,"kind":"actual"},{"h":20,"pax":548,"lo":548,"hi":548,"kind":"actual"},{"h":21,"pax":327,"lo":327,"hi":327,"kind":"actual"},{"h":22,"pax":173,"lo":173,"hi":173,"kind":"actual"},{"h":23,"pax":94,"lo":94,"hi":94,"kind":"actual"}]},{"date":"2026-09-19","dow":"Sat","offset":-4,"factor":0.88,"total":16138,"hours":[{"h":0,"pax":55,"lo":55,"hi":55,"kind":"actual"},{"h":1,"pax":26,"lo":26,"hi":26,"kind":"actual"},{"h":2,"pax":18,"lo":18,"hi":18,"kind":"actual"},{"h":3,"pax":78,"lo":78,"hi":78,"kind":"actual"},{"h":4,"pax":480,"lo":480,"hi":480,"kind":"actual"},{"h":5,"pax":1445,"lo":1445,"hi":1445,"kind":"actual"},{"h":6,"pax":1625,"lo":1625,"hi":1625,"kind":"actual"},{"h":7,"pax":1212,"lo":1212,"hi":1212,"kind":"actual"},{"h":8,"pax":851,"lo":851,"hi":851,"kind":"actual"},{"h":9,"pax":718,"lo":718,"hi":718,"kind":"actual"},{"h":10,"pax":800,"lo":800,"hi":800,"kind":"actual"},{"h":11,"pax":931,"lo":931,"hi":931,"kind":"actual"},{"h":12,"pax":939,"lo":939,"hi":939,"kind":"actual"},{"h":13,"pax":791,"lo":791,"hi":791,"kind":"actual"},{"h":14,"pax":793,"lo":793,"hi":793,"kind":"actual"},{"h":15,"pax":846,"lo":846,"hi":846,"kind":"actual"},{"h":16,"pax":987,"lo":987,"hi":987,"kind":"actual"},{"h":17,"pax":1049,"lo":1049,"hi":1049,"kind":"actual"},{"h":18,"pax":914,"lo":914,"hi":914,"kind":"actual"},{"h":19,"pax":661,"lo":661,"hi":661,"kind":"actual"},{"h":20,"pax":455,"lo":455,"hi":455,"kind":"actual"},{"h":21,"pax":262,"lo":262,"hi":262,"kind":"actual"},{"h":22,"pax":133,"lo":133,"hi":133,"kind":"actual"},{"h":23,"pax":69,"lo":69,"hi":69,"kind":"actual"}]},{"date":"2026-09-20","dow":"Sun","offset":-3,"factor":1.06,"total":19739,"hours":[{"h":0,"pax":67,"lo":67,"hi":67,"kind":"actual"},{"h":1,"pax":32,"lo":32,"hi":32,"kind":"actual"},{"h":2,"pax":22,"lo":22,"hi":22,"kind":"actual"},{"h":3,"pax":100,"lo":100,"hi":100,"kind":"actual"},{"h":4,"pax":519,"lo":519,"hi":519,"kind":"actual"},{"h":5,"pax":1795,"lo":1795,"hi":1795,"kind":"actual"},{"h":6,"pax":2058,"lo":2058,"hi":2058,"kind":"actual"},{"h":7,"pax":1512,"lo":1512,"hi":1512,"kind":"actual"},{"h":8,"pax":989,"lo":989,"hi":989,"kind":"actual"},{"h":9,"pax":905,"lo":905,"hi":905,"kind":"actual"},{"h":10,"pax":910,"lo":910,"hi":910,"kind":"actual"},{"h":11,"pax":1062,"lo":1062,"hi":1062,"kind":"actual"},{"h":12,"pax":1138,"lo":1138,"hi":1138,"kind":"actual"},{"h":13,"pax":1039,"lo":1039,"hi":1039,"kind":"actual"},{"h":14,"pax":942,"lo":942,"hi":942,"kind":"actual"},{"h":15,"pax":989,"lo":989,"hi":989,"kind":"actual"},{"h":16,"pax":1251,"lo":1251,"hi":1251,"kind":"actual"},{"h":17,"pax":1284,"lo":1284,"hi":1284,"kind":"actual"},{"h":18,"pax":1213,"lo":1213,"hi":1213,"kind":"actual"},{"h":19,"pax":819,"lo":819,"hi":819,"kind":"actual"},{"h":20,"pax":517,"lo":517,"hi":517,"kind":"actual"},{"h":21,"pax":323,"lo":323,"hi":323,"kind":"actual"},{"h":22,"pax":172,"lo":172,"hi":172,"kind":"actual"},{"h":23,"pax":81,"lo":81,"hi":81,"kind":"actual"}]},{"date":"2026-09-21","dow":"Mon","offset":-2,"factor":1.04,"total":19205,"hours":[{"h":0,"pax":64,"lo":64,"hi":64,"kind":"actual"},{"h":1,"pax":31,"lo":31,"hi":31,"kind":"actual"},{"h":2,"pax":21,"lo":21,"hi":21,"kind":"actual"},{"h":3,"pax":94,"lo":94,"hi":94,"kind":"actual"},{"h":4,"pax":508,"lo":508,"hi":508,"kind":"actual"},{"h":5,"pax":1680,"lo":1680,"hi":1680,"kind":"actual"},{"h":6,"pax":1862,"lo":1862,"hi":1862,"kind":"actual"},{"h":7,"pax":1553,"lo":1553,"hi":1553,"kind":"actual"},{"h":8,"pax":1044,"lo":1044,"hi":1044,"kind":"actual"},{"h":9,"pax":908,"lo":908,"hi":908,"kind":"actual"},{"h":10,"pax":914,"lo":914,"hi":914,"kind":"actual"},{"h":11,"pax":995,"lo":995,"hi":995,"kind":"actual"},{"h":12,"pax":1174,"lo":1174,"hi":1174,"kind":"actual"},{"h":13,"pax":1019,"lo":1019,"hi":1019,"kind":"actual"},{"h":14,"pax":840,"lo":840,"hi":840,"kind":"actual"},{"h":15,"pax":997,"lo":997,"hi":997,"kind":"actual"},{"h":16,"pax":1164,"lo":1164,"hi":1164,"kind":"actual"},{"h":17,"pax":1351,"lo":1351,"hi":1351,"kind":"actual"},{"h":18,"pax":1170,"lo":1170,"hi":1170,"kind":"actual"},{"h":19,"pax":735,"lo":735,"hi":735,"kind":"actual"},{"h":20,"pax":518,"lo":518,"hi":518,"kind":"actual"},{"h":21,"pax":314,"lo":314,"hi":314,"kind":"actual"},{"h":22,"pax":162,"lo":162,"hi":162,"kind":"actual"},{"h":23,"pax":87,"lo":87,"hi":87,"kind":"actual"}]},{"date":"2026-09-22","dow":"Tue","offset":-1,"factor":0.93,"total":17136,"hours":[{"h":0,"pax":55,"lo":55,"hi":55,"kind":"actual"},{"h":1,"pax":27,"lo":27,"hi":27,"kind":"actual"},{"h":2,"pax":19,"lo":19,"hi":19,"kind":"actual"},{"h":3,"pax":86,"lo":86,"hi":86,"kind":"actual"},{"h":4,"pax":466,"lo":466,"hi":466,"kind":"actual"},{"h":5,"pax":1500,"lo":1500,"hi":1500,"kind":"actual"},{"h":6,"pax":1872,"lo":1872,"hi":1872,"kind":"actual"},{"h":7,"pax":1344,"lo":1344,"hi":1344,"kind":"actual"},{"h":8,"pax":886,"lo":886,"hi":886,"kind":"actual"},{"h":9,"pax":783,"lo":783,"hi":783,"kind":"actual"},{"h":10,"pax":799,"lo":799,"hi":799,"kind":"actual"},{"h":11,"pax":908,"lo":908,"hi":908,"kind":"actual"},{"h":12,"pax":985,"lo":985,"hi":985,"kind":"actual"},{"h":13,"pax":874,"lo":874,"hi":874,"kind":"actual"},{"h":14,"pax":765,"lo":765,"hi":765,"kind":"actual"},{"h":15,"pax":863,"lo":863,"hi":863,"kind":"actual"},{"h":16,"pax":1041,"lo":1041,"hi":1041,"kind":"actual"},{"h":17,"pax":1190,"lo":1190,"hi":1190,"kind":"actual"},{"h":18,"pax":981,"lo":981,"hi":981,"kind":"actual"},{"h":19,"pax":722,"lo":722,"hi":722,"kind":"actual"},{"h":20,"pax":485,"lo":485,"hi":485,"kind":"actual"},{"h":21,"pax":265,"lo":265,"hi":265,"kind":"actual"},{"h":22,"pax":144,"lo":144,"hi":144,"kind":"actual"},{"h":23,"pax":76,"lo":76,"hi":76,"kind":"actual"}]},{"date":"2026-09-23","dow":"Wed","offset":0,"factor":0.95,"total":17655,"hours":[{"h":0,"pax":55,"lo":55,"hi":55,"kind":"actual"},{"h":1,"pax":27,"lo":27,"hi":27,"kind":"actual"},{"h":2,"pax":20,"lo":20,"hi":20,"kind":"actual"},{"h":3,"pax":86,"lo":86,"hi":86,"kind":"actual"},{"h":4,"pax":492,"lo":492,"hi":492,"kind":"actual"},{"h":5,"pax":1621,"lo":1621,"hi":1621,"kind":"actual"},{"h":6,"pax":1872,"lo":1872,"hi":1872,"kind":"actual"},{"h":7,"pax":1299,"lo":1299,"hi":1299,"kind":"actual"},{"h":8,"pax":868,"lo":868,"hi":868,"kind":"actual"},{"h":9,"pax":791,"lo":791,"hi":791,"kind":"actual"},{"h":10,"pax":847,"lo":847,"hi":847,"kind":"actual"},{"h":11,"pax":956,"lo":956,"hi":956,"kind":"actual"},{"h":12,"pax":1054,"lo":1054,"hi":1054,"kind":"actual"},{"h":13,"pax":902,"lo":902,"hi":902,"kind":"actual"},{"h":14,"pax":808,"lo":767,"hi":848,"kind":"forecast"},{"h":15,"pax":912,"lo":866,"hi":958,"kind":"forecast"},{"h":16,"pax":1121,"lo":1065,"hi":1177,"kind":"forecast"},{"h":17,"pax":1197,"lo":1137,"hi":1257,"kind":"forecast"},{"h":18,"pax":1036,"lo":984,"hi":1087,"kind":"forecast"},{"h":19,"pax":703,"lo":668,"hi":738,"kind":"forecast"},{"h":20,"pax":475,"lo":451,"hi":499,"kind":"forecast"},{"h":21,"pax":285,"lo":271,"hi":299,"kind":"forecast"},{"h":22,"pax":152,"lo":144,"hi":160,"kind":"forecast"},{"h":23,"pax":76,"lo":72,"hi":80,"kind":"forecast"}]},{"date":"2026-09-24","dow":"Thu","offset":1,"factor":1.081,"total":20034,"hours":[{"h":0,"pax":65,"lo":61,"hi":69,"kind":"forecast"},{"h":1,"pax":32,"lo":30,"hi":34,"kind":"forecast"},{"h":2,"pax":22,"lo":20,"hi":23,"kind":"forecast"},{"h":3,"pax":97,"lo":91,"hi":103,"kind":"forecast"},{"h":4,"pax":562,"lo":527,"hi":597,"kind":"forecast"},{"h":5,"pax":1784,"lo":1673,"hi":1895,"kind":"forecast"},{"h":6,"pax":2054,"lo":1927,"hi":2182,"kind":"forecast"},{"h":7,"pax":1535,"lo":1440,"hi":1630,"kind":"forecast"},{"h":8,"pax":1038,"lo":974,"hi":1102,"kind":"forecast"},{"h":9,"pax":908,"lo":852,"hi":965,"kind":"forecast"},{"h":10,"pax":973,"lo":913,"hi":1033,"kind":"forecast"},{"h":11,"pax":1092,"lo":1024,"hi":1160,"kind":"forecast"},{"h":12,"pax":1168,"lo":1095,"hi":1240,"kind":"forecast"},{"h":13,"pax":1006,"lo":943,"hi":1068,"kind":"forecast"},{"h":14,"pax":919,"lo":862,"hi":976,"kind":"forecast"},{"h":15,"pax":1038,"lo":974,"hi":1102,"kind":"forecast"},{"h":16,"pax":1276,"lo":1197,"hi":1355,"kind":"forecast"},{"h":17,"pax":1362,"lo":1278,"hi":1447,"kind":"forecast"},{"h":18,"pax":1179,"lo":1105,"hi":1252,"kind":"forecast"},{"h":19,"pax":800,"lo":750,"hi":850,"kind":"forecast"},{"h":20,"pax":541,"lo":507,"hi":574,"kind":"forecast"},{"h":21,"pax":324,"lo":304,"hi":344,"kind":"forecast"},{"h":22,"pax":173,"lo":162,"hi":184,"kind":"forecast"},{"h":23,"pax":86,"lo":81,"hi":92,"kind":"forecast"}]},{"date":"2026-09-25","dow":"Fri","offset":2,"factor":1.299,"total":24073,"hours":[{"h":0,"pax":78,"lo":72,"hi":84,"kind":"forecast"},{"h":1,"pax":39,"lo":36,"hi":42,"kind":"forecast"},{"h":2,"pax":26,"lo":24,"hi":28,"kind":"forecast"},{"h":3,"pax":117,"lo":108,"hi":126,"kind":"forecast"},{"h":4,"pax":676,"lo":626,"hi":726,"kind":"forecast"},{"h":5,"pax":2144,"lo":1985,"hi":2302,"kind":"forecast"},{"h":6,"pax":2468,"lo":2286,"hi":2651,"kind":"forecast"},{"h":7,"pax":1845,"lo":1708,"hi":1981,"kind":"forecast"},{"h":8,"pax":1247,"lo":1155,"hi":1340,"kind":"forecast"},{"h":9,"pax":1091,"lo":1011,"hi":1172,"kind":"forecast"},{"h":10,"pax":1169,"lo":1083,"hi":1256,"kind":"forecast"},{"h":11,"pax":1312,"lo":1215,"hi":1409,"kind":"forecast"},{"h":12,"pax":1403,"lo":1299,"hi":1507,"kind":"forecast"},{"h":13,"pax":1208,"lo":1119,"hi":1298,"kind":"forecast"},{"h":14,"pax":1104,"lo":1023,"hi":1186,"kind":"forecast"},{"h":15,"pax":1247,"lo":1155,"hi":1340,"kind":"forecast"},{"h":16,"pax":1533,"lo":1420,"hi":1647,"kind":"forecast"},{"h":17,"pax":1637,"lo":1516,"hi":1758,"kind":"forecast"},{"h":18,"pax":1416,"lo":1311,"hi":1521,"kind":"forecast"},{"h":19,"pax":961,"lo":890,"hi":1033,"kind":"forecast"},{"h":20,"pax":650,"lo":602,"hi":698,"kind":"forecast"},{"h":21,"pax":390,"lo":361,"hi":419,"kind":"forecast"},{"h":22,"pax":208,"lo":192,"hi":223,"kind":"forecast"},{"h":23,"pax":104,"lo":96,"hi":112,"kind":"forecast"}]},{"date":"2026-09-26","dow":"Sat","offset":3,"factor":0.898,"total":16634,"hours":[{"h":0,"pax":54,"lo":49,"hi":58,"kind":"forecast"},{"h":1,"pax":27,"lo":25,"hi":29,"kind":"forecast"},{"h":2,"pax":18,"lo":16,"hi":19,"kind":"forecast"},{"h":3,"pax":81,"lo":74,"hi":88,"kind":"forecast"},{"h":4,"pax":467,"lo":427,"hi":507,"kind":"forecast"},{"h":5,"pax":1481,"lo":1354,"hi":1608,"kind":"forecast"},{"h":6,"pax":1705,"lo":1559,"hi":1852,"kind":"forecast"},{"h":7,"pax":1275,"lo":1165,"hi":1384,"kind":"forecast"},{"h":8,"pax":862,"lo":788,"hi":936,"kind":"forecast"},{"h":9,"pax":754,"lo":689,"hi":819,"kind":"forecast"},{"h":10,"pax":808,"lo":738,"hi":877,"kind":"forecast"},{"h":11,"pax":907,"lo":829,"hi":985,"kind":"forecast"},{"h":12,"pax":969,"lo":886,"hi":1053,"kind":"forecast"},{"h":13,"pax":835,"lo":763,"hi":907,"kind":"forecast"},{"h":14,"pax":763,"lo":697,"hi":829,"kind":"forecast"},{"h":15,"pax":862,"lo":788,"hi":936,"kind":"forecast"},{"h":16,"pax":1059,"lo":968,"hi":1150,"kind":"forecast"},{"h":17,"pax":1131,"lo":1034,"hi":1228,"kind":"forecast"},{"h":18,"pax":978,"lo":894,"hi":1063,"kind":"forecast"},{"h":19,"pax":664,"lo":607,"hi":721,"kind":"forecast"},{"h":20,"pax":449,"lo":410,"hi":487,"kind":"forecast"},{"h":21,"pax":269,"lo":246,"hi":292,"kind":"forecast"},{"h":22,"pax":144,"lo":131,"hi":156,"kind":"forecast"},{"h":23,"pax":72,"lo":66,"hi":78,"kind":"forecast"}]},{"date":"2026-09-27","dow":"Sun","offset":4,"factor":1.208,"total":22392,"hours":[{"h":0,"pax":73,"lo":65,"hi":80,"kind":"forecast"},{"h":1,"pax":36,"lo":33,"hi":40,"kind":"forecast"},{"h":2,"pax":24,"lo":22,"hi":27,"kind":"forecast"},{"h":3,"pax":109,"lo":98,"hi":119,"kind":"forecast"},{"h":4,"pax":628,"lo":567,"hi":690,"kind":"forecast"},{"h":5,"pax":1994,"lo":1798,"hi":2189,"kind":"forecast"},{"h":6,"pax":2296,"lo":2071,"hi":2521,"kind":"forecast"},{"h":7,"pax":1716,"lo":1548,"hi":1884,"kind":"forecast"},{"h":8,"pax":1160,"lo":1046,"hi":1274,"kind":"forecast"},{"h":9,"pax":1015,"lo":916,"hi":1115,"kind":"forecast"},{"h":10,"pax":1088,"lo":981,"hi":1194,"kind":"forecast"},{"h":11,"pax":1220,"lo":1101,"hi":1340,"kind":"forecast"},{"h":12,"pax":1305,"lo":1177,"hi":1433,"kind":"forecast"},{"h":13,"pax":1124,"lo":1014,"hi":1234,"kind":"forecast"},{"h":14,"pax":1027,"lo":926,"hi":1128,"kind":"forecast"},{"h":15,"pax":1160,"lo":1046,"hi":1274,"kind":"forecast"},{"h":16,"pax":1426,"lo":1286,"hi":1566,"kind":"forecast"},{"h":17,"pax":1523,"lo":1373,"hi":1672,"kind":"forecast"},{"h":18,"pax":1317,"lo":1188,"hi":1446,"kind":"forecast"},{"h":19,"pax":894,"lo":807,"hi":982,"kind":"forecast"},{"h":20,"pax":604,"lo":545,"hi":663,"kind":"forecast"},{"h":21,"pax":363,"lo":327,"hi":398,"kind":"forecast"},{"h":22,"pax":193,"lo":174,"hi":212,"kind":"forecast"},{"h":23,"pax":97,"lo":87,"hi":106,"kind":"forecast"}]},{"date":"2026-09-28","dow":"Mon","offset":5,"factor":1.134,"total":21005,"hours":[{"h":0,"pax":68,"lo":61,"hi":75,"kind":"forecast"},{"h":1,"pax":34,"lo":30,"hi":38,"kind":"forecast"},{"h":2,"pax":23,"lo":20,"hi":25,"kind":"forecast"},{"h":3,"pax":102,"lo":91,"hi":113,"kind":"forecast"},{"h":4,"pax":589,"lo":525,"hi":654,"kind":"forecast"},{"h":5,"pax":1870,"lo":1665,"hi":2076,"kind":"forecast"},{"h":6,"pax":2154,"lo":1917,"hi":2391,"kind":"forecast"},{"h":7,"pax":1610,"lo":1433,"hi":1787,"kind":"forecast"},{"h":8,"pax":1088,"lo":969,"hi":1208,"kind":"forecast"},{"h":9,"pax":952,"lo":847,"hi":1057,"kind":"forecast"},{"h":10,"pax":1020,"lo":908,"hi":1132,"kind":"forecast"},{"h":11,"pax":1145,"lo":1019,"hi":1271,"kind":"forecast"},{"h":12,"pax":1224,"lo":1090,"hi":1359,"kind":"forecast"},{"h":13,"pax":1054,"lo":938,"hi":1170,"kind":"forecast"},{"h":14,"pax":964,"lo":858,"hi":1070,"kind":"forecast"},{"h":15,"pax":1088,"lo":969,"hi":1208,"kind":"forecast"},{"h":16,"pax":1338,"lo":1191,"hi":1485,"kind":"forecast"},{"h":17,"pax":1428,"lo":1271,"hi":1585,"kind":"forecast"},{"h":18,"pax":1236,"lo":1100,"hi":1372,"kind":"forecast"},{"h":19,"pax":839,"lo":747,"hi":931,"kind":"forecast"},{"h":20,"pax":567,"lo":504,"hi":629,"kind":"forecast"},{"h":21,"pax":340,"lo":303,"hi":377,"kind":"forecast"},{"h":22,"pax":181,"lo":161,"hi":201,"kind":"forecast"},{"h":23,"pax":91,"lo":81,"hi":101,"kind":"forecast"}]},{"date":"2026-09-29","dow":"Tue","offset":6,"factor":0.939,"total":17406,"hours":[{"h":0,"pax":56,"lo":49,"hi":63,"kind":"forecast"},{"h":1,"pax":28,"lo":25,"hi":32,"kind":"forecast"},{"h":2,"pax":19,"lo":16,"hi":21,"kind":"forecast"},{"h":3,"pax":85,"lo":74,"hi":95,"kind":"forecast"},{"h":4,"pax":488,"lo":429,"hi":548,"kind":"forecast"},{"h":5,"pax":1550,"lo":1361,"hi":1739,"kind":"forecast"},{"h":6,"pax":1785,"lo":1567,"hi":2002,"kind":"forecast"},{"h":7,"pax":1334,"lo":1171,"hi":1497,"kind":"forecast"},{"h":8,"pax":902,"lo":792,"hi":1012,"kind":"forecast"},{"h":9,"pax":789,"lo":693,"hi":885,"kind":"forecast"},{"h":10,"pax":845,"lo":742,"hi":949,"kind":"forecast"},{"h":11,"pax":949,"lo":833,"hi":1064,"kind":"forecast"},{"h":12,"pax":1014,"lo":891,"hi":1138,"kind":"forecast"},{"h":13,"pax":874,"lo":767,"hi":980,"kind":"forecast"},{"h":14,"pax":798,"lo":701,"hi":896,"kind":"forecast"},{"h":15,"pax":902,"lo":792,"hi":1012,"kind":"forecast"},{"h":16,"pax":1108,"lo":973,"hi":1244,"kind":"forecast"},{"h":17,"pax":1184,"lo":1039,"hi":1328,"kind":"forecast"},{"h":18,"pax":1024,"lo":899,"hi":1149,"kind":"forecast"},{"h":19,"pax":695,"lo":610,"hi":780,"kind":"forecast"},{"h":20,"pax":470,"lo":412,"hi":527,"kind":"forecast"},{"h":21,"pax":282,"lo":247,"hi":316,"kind":"forecast"},{"h":22,"pax":150,"lo":132,"hi":169,"kind":"forecast"},{"h":23,"pax":75,"lo":66,"hi":84,"kind":"forecast"}]},{"date":"2026-09-30","dow":"Wed","offset":7,"factor":0.95,"total":17606,"hours":[{"h":0,"pax":57,"lo":49,"hi":65,"kind":"forecast"},{"h":1,"pax":28,"lo":25,"hi":32,"kind":"forecast"},{"h":2,"pax":19,"lo":16,"hi":22,"kind":"forecast"},{"h":3,"pax":86,"lo":74,"hi":97,"kind":"forecast"},{"h":4,"pax":494,"lo":428,"hi":560,"kind":"forecast"},{"h":5,"pax":1568,"lo":1357,"hi":1778,"kind":"forecast"},{"h":6,"pax":1805,"lo":1563,"hi":2047,"kind":"forecast"},{"h":7,"pax":1349,"lo":1168,"hi":1530,"kind":"forecast"},{"h":8,"pax":912,"lo":790,"hi":1034,"kind":"forecast"},{"h":9,"pax":798,"lo":691,"hi":905,"kind":"forecast"},{"h":10,"pax":855,"lo":740,"hi":970,"kind":"forecast"},{"h":11,"pax":960,"lo":831,"hi":1088,"kind":"forecast"},{"h":12,"pax":1026,"lo":889,"hi":1163,"kind":"forecast"},{"h":13,"pax":884,"lo":765,"hi":1002,"kind":"forecast"},{"h":14,"pax":808,"lo":699,"hi":916,"kind":"forecast"},{"h":15,"pax":912,"lo":790,"hi":1034,"kind":"forecast"},{"h":16,"pax":1121,"lo":971,"hi":1271,"kind":"forecast"},{"h":17,"pax":1197,"lo":1037,"hi":1357,"kind":"forecast"},{"h":18,"pax":1036,"lo":897,"hi":1174,"kind":"forecast"},{"h":19,"pax":703,"lo":609,"hi":797,"kind":"forecast"},{"h":20,"pax":475,"lo":411,"hi":539,"kind":"forecast"},{"h":21,"pax":285,"lo":247,"hi":323,"kind":"forecast"},{"h":22,"pax":152,"lo":132,"hi":172,"kind":"forecast"},{"h":23,"pax":76,"lo":66,"hi":86,"kind":"forecast"}]}],"today_total":17655,"avg_last7":18529,"avg_next7":19879,"screening":[{"id":"SP1","name":"T1 North","terminal":"T1 Domestic","lanes":4,"share":0.36,"tph":220,"hour_mult":{},"hours":[{"h":0,"pax":20,"lanes_required":1,"lanes_open":1,"wait_p95":2.4,"kind":"actual"},{"h":1,"pax":10,"lanes_required":1,"lanes_open":1,"wait_p95":2.2,"kind":"actual"},{"h":2,"pax":7,"lanes_required":1,"lanes_open":1,"wait_p95":2.1,"kind":"actual"},{"h":3,"pax":31,"lanes_required":1,"lanes_open":1,"wait_p95":2.6,"kind":"actual"},{"h":4,"pax":177,"lanes_required":1,"lanes_open":1,"wait_p95":5.2,"kind":"actual"},{"h":5,"pax":584,"lanes_required":4,"lanes_open":4,"wait_p95":4.7,"kind":"actual"},{"h":6,"pax":674,"lanes_required":4,"lanes_open":4,"wait_p95":5.1,"kind":"actual"},{"h":7,"pax":468,"lanes_required":3,"lanes_open":3,"wait_p95":4.8,"kind":"actual"},{"h":8,"pax":312,"lanes_required":2,"lanes_open":2,"wait_p95":4.8,"kind":"actual"},{"h":9,"pax":285,"lanes_required":2,"lanes_open":2,"wait_p95":4.6,"kind":"actual"},{"h":10,"pax":305,"lanes_required":2,"lanes_open":2,"wait_p95":4.8,"kind":"actual"},{"h":11,"pax":344,"lanes_required":2,"lanes_open":2,"wait_p95":5.1,"kind":"actual"},{"h":12,"pax":379,"lanes_required":3,"lanes_open":3,"wait_p95":4.3,"kind":"actual"},{"h":13,"pax":325,"lanes_required":2,"lanes_open":2,"wait_p95":5.0,"kind":"actual"},{"h":14,"pax":291,"lanes_required":2,"lanes_open":2,"wait_p95":4.6,"kind":"forecast"},{"h":15,"pax":328,"lanes_required":2,"lanes_open":2,"wait_p95":5.0,"kind":"forecast"},{"h":16,"pax":404,"lanes_required":3,"lanes_open":3,"wait_p95":4.4,"kind":"forecast"},{"h":17,"pax":431,"lanes_required":3,"lanes_open":3,"wait_p95":4.6,"kind":"forecast"},{"h":18,"pax":373,"lanes_required":2,"lanes_open":2,"wait_p95":5.4,"kind":"forecast"},{"h":19,"pax":253,"lanes_required":2,"lanes_open":2,"wait_p95":4.3,"kind":"forecast"},{"h":20,"pax":171,"lanes_required":1,"lanes_open":1,"wait_p95":5.1,"kind":"forecast"},{"h":21,"pax":103,"lanes_required":1,"lanes_open":1,"wait_p95":3.9,"kind":"forecast"},{"h":22,"pax":55,"lanes_required":1,"lanes_open":1,"wait_p95":3.0,"kind":"forecast"},{"h":23,"pax":27,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"forecast"}]},{"id":"SP2","name":"T1 South","terminal":"T1 Domestic","lanes":3,"share":0.31,"tph":220,"hour_mult":{},"hours":[{"h":0,"pax":17,"lanes_required":1,"lanes_open":1,"wait_p95":2.3,"kind":"actual"},{"h":1,"pax":8,"lanes_required":1,"lanes_open":1,"wait_p95":2.1,"kind":"actual"},{"h":2,"pax":6,"lanes_required":1,"lanes_open":1,"wait_p95":2.1,"kind":"actual"},{"h":3,"pax":27,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"actual"},{"h":4,"pax":153,"lanes_required":1,"lanes_open":1,"wait_p95":4.8,"kind":"actual"},{"h":5,"pax":503,"lanes_required":3,"lanes_open":3,"wait_p95":5.0,"kind":"actual"},{"h":6,"pax":580,"lanes_required":3,"lanes_open":3,"wait_p95":5.9,"kind":"actual"},{"h":7,"pax":403,"lanes_required":3,"lanes_open":3,"wait_p95":4.4,"kind":"actual"},{"h":8,"pax":269,"lanes_required":2,"lanes_open":2,"wait_p95":4.4,"kind":"actual"},{"h":9,"pax":245,"lanes_required":2,"lanes_open":2,"wait_p95":4.2,"kind":"actual"},{"h":10,"pax":263,"lanes_required":2,"lanes_open":2,"wait_p95":4.4,"kind":"actual"},{"h":11,"pax":296,"lanes_required":2,"lanes_open":2,"wait_p95":4.7,"kind":"actual"},{"h":12,"pax":327,"lanes_required":2,"lanes_open":2,"wait_p95":5.0,"kind":"actual"},{"h":13,"pax":280,"lanes_required":2,"lanes_open":2,"wait_p95":4.5,"kind":"actual"},{"h":14,"pax":250,"lanes_required":2,"lanes_open":2,"wait_p95":4.3,"kind":"forecast"},{"h":15,"pax":283,"lanes_required":2,"lanes_open":2,"wait_p95":4.6,"kind":"forecast"},{"h":16,"pax":348,"lanes_required":2,"lanes_open":2,"wait_p95":5.2,"kind":"forecast"},{"h":17,"pax":371,"lanes_required":2,"lanes_open":2,"wait_p95":5.4,"kind":"forecast"},{"h":18,"pax":321,"lanes_required":2,"lanes_open":2,"wait_p95":4.9,"kind":"forecast"},{"h":19,"pax":218,"lanes_required":2,"lanes_open":2,"wait_p95":4.0,"kind":"forecast"},{"h":20,"pax":147,"lanes_required":1,"lanes_open":1,"wait_p95":4.7,"kind":"forecast"},{"h":21,"pax":88,"lanes_required":1,"lanes_open":1,"wait_p95":3.6,"kind":"forecast"},{"h":22,"pax":47,"lanes_required":1,"lanes_open":1,"wait_p95":2.9,"kind":"forecast"},{"h":23,"pax":24,"lanes_required":1,"lanes_open":1,"wait_p95":2.4,"kind":"forecast"}]},{"id":"SP3","name":"T2 International","terminal":"T2 International","lanes":4,"share":0.3,"tph":190,"hour_mult":{"5":0.9,"6":0.95,"7":0.9,"16":1.25,"17":1.7,"18":1.55,"19":1.3,"20":1.2},"hours":[{"h":0,"pax":16,"lanes_required":1,"lanes_open":1,"wait_p95":2.3,"kind":"actual"},{"h":1,"pax":8,"lanes_required":1,"lanes_open":1,"wait_p95":2.2,"kind":"actual"},{"h":2,"pax":6,"lanes_required":1,"lanes_open":1,"wait_p95":2.1,"kind":"actual"},{"h":3,"pax":26,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"actual"},{"h":4,"pax":148,"lanes_required":1,"lanes_open":1,"wait_p95":5.1,"kind":"actual"},{"h":5,"pax":438,"lanes_required":3,"lanes_open":3,"wait_p95":5.1,"kind":"actual"},{"h":6,"pax":534,"lanes_required":4,"lanes_open":4,"wait_p95":4.8,"kind":"actual"},{"h":7,"pax":351,"lanes_required":3,"lanes_open":3,"wait_p95":4.5,"kind":"actual"},{"h":8,"pax":260,"lanes_required":2,"lanes_open":2,"wait_p95":4.7,"kind":"actual"},{"h":9,"pax":237,"lanes_required":2,"lanes_open":2,"wait_p95":4.5,"kind":"actual"},{"h":10,"pax":254,"lanes_required":2,"lanes_open":2,"wait_p95":4.7,"kind":"actual"},{"h":11,"pax":287,"lanes_required":2,"lanes_open":2,"wait_p95":5.0,"kind":"actual"},{"h":12,"pax":316,"lanes_required":2,"lanes_open":2,"wait_p95":5.3,"kind":"actual"},{"h":13,"pax":271,"lanes_required":2,"lanes_open":2,"wait_p95":4.9,"kind":"actual"},{"h":14,"pax":242,"lanes_required":2,"lanes_open":2,"wait_p95":4.5,"kind":"forecast"},{"h":15,"pax":274,"lanes_required":2,"lanes_open":2,"wait_p95":4.9,"kind":"forecast"},{"h":16,"pax":420,"lanes_required":3,"lanes_open":3,"wait_p95":4.9,"kind":"forecast"},{"h":17,"pax":610,"lanes_required":4,"lanes_open":3,"wait_p95":11.9,"kind":"forecast"},{"h":18,"pax":482,"lanes_required":3,"lanes_open":2,"wait_p95":20.0,"kind":"forecast"},{"h":19,"pax":274,"lanes_required":2,"lanes_open":2,"wait_p95":4.9,"kind":"forecast"},{"h":20,"pax":171,"lanes_required":2,"lanes_open":2,"wait_p95":3.8,"kind":"forecast"},{"h":21,"pax":86,"lanes_required":1,"lanes_open":1,"wait_p95":3.8,"kind":"forecast"},{"h":22,"pax":46,"lanes_required":1,"lanes_open":1,"wait_p95":3.0,"kind":"forecast"},{"h":23,"pax":23,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"forecast"}]},{"id":"SP4","name":"Staff & Crew","terminal":"Landside","lanes":1,"share":0.03,"tph":190,"hour_mult":{},"hours":[{"h":0,"pax":2,"lanes_required":1,"lanes_open":1,"wait_p95":2.0,"kind":"actual"},{"h":1,"pax":1,"lanes_required":1,"lanes_open":1,"wait_p95":2.0,"kind":"actual"},{"h":2,"pax":1,"lanes_required":1,"lanes_open":1,"wait_p95":2.0,"kind":"actual"},{"h":3,"pax":3,"lanes_required":1,"lanes_open":1,"wait_p95":2.1,"kind":"actual"},{"h":4,"pax":15,"lanes_required":1,"lanes_open":1,"wait_p95":2.3,"kind":"actual"},{"h":5,"pax":49,"lanes_required":1,"lanes_open":1,"wait_p95":3.0,"kind":"actual"},{"h":6,"pax":56,"lanes_required":1,"lanes_open":1,"wait_p95":3.2,"kind":"actual"},{"h":7,"pax":39,"lanes_required":1,"lanes_open":1,"wait_p95":2.8,"kind":"actual"},{"h":8,"pax":26,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"actual"},{"h":9,"pax":24,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"actual"},{"h":10,"pax":25,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"actual"},{"h":11,"pax":29,"lanes_required":1,"lanes_open":1,"wait_p95":2.6,"kind":"actual"},{"h":12,"pax":32,"lanes_required":1,"lanes_open":1,"wait_p95":2.7,"kind":"actual"},{"h":13,"pax":27,"lanes_required":1,"lanes_open":1,"wait_p95":2.6,"kind":"actual"},{"h":14,"pax":24,"lanes_required":1,"lanes_open":1,"wait_p95":2.5,"kind":"forecast"},{"h":15,"pax":27,"lanes_required":1,"lanes_open":1,"wait_p95":2.6,"kind":"forecast"},{"h":16,"pax":34,"lanes_required":1,"lanes_open":1,"wait_p95":2.7,"kind":"forecast"},{"h":17,"pax":36,"lanes_required":1,"lanes_open":1,"wait_p95":2.8,"kind":"forecast"},{"h":18,"pax":31,"lanes_required":1,"lanes_open":1,"wait_p95":2.7,"kind":"forecast"},{"h":19,"pax":21,"lanes_required":1,"lanes_open":1,"wait_p95":2.4,"kind":"forecast"},{"h":20,"pax":14,"lanes_required":1,"lanes_open":1,"wait_p95":2.3,"kind":"forecast"},{"h":21,"pax":9,"lanes_required":1,"lanes_open":1,"wait_p95":2.2,"kind":"forecast"},{"h":22,"pax":5,"lanes_required":1,"lanes_open":1,"wait_p95":2.1,"kind":"forecast"},{"h":23,"pax":2,"lanes_required":1,"lanes_open":1,"wait_p95":2.0,"kind":"forecast"}]}],"scenario":{"title":"SP3 Lane 3 out of service Thu 24 to Fri 25 Sep","reason":"CT-SP3-03 generator replacement (predicted failure window 4 to 11 Oct, brought forward)","lanes_available":3,"impact_hours":[{"date":"2026-09-24","dow":"Thu","h":6,"pax":585,"lanes_required":4,"wait_with_3":10.3,"wait_with_4":5.1},{"date":"2026-09-24","dow":"Thu","h":17,"pax":695,"lanes_required":5,"wait_with_3":17.8,"wait_with_4":6.8},{"date":"2026-09-24","dow":"Thu","h":18,"pax":548,"lanes_required":4,"wait_with_3":8.2,"wait_with_4":4.9},{"date":"2026-09-25","dow":"Fri","h":5,"pax":579,"lanes_required":4,"wait_with_3":9.9,"wait_with_4":5.0},{"date":"2026-09-25","dow":"Fri","h":6,"pax":703,"lanes_required":5,"wait_with_3":18.4,"wait_with_4":7.1},{"date":"2026-09-25","dow":"Fri","h":7,"pax":498,"lanes_required":4,"wait_with_3":5.8,"wait_with_4":4.6},{"date":"2026-09-25","dow":"Fri","h":16,"pax":575,"lanes_required":4,"wait_with_3":9.7,"wait_with_4":5.0},{"date":"2026-09-25","dow":"Fri","h":17,"pax":835,"lanes_required":6,"wait_with_3":29.1,"wait_with_4":12.9},{"date":"2026-09-25","dow":"Fri","h":18,"pax":658,"lanes_required":5,"wait_with_3":15.1,"wait_with_4":5.6}],"pax_at_risk":3476,"breach_hours":5,"mitigation":"pre-screen transfer passengers at SP1 lane 4 (spare 05:00 to 08:00 and 16:00 to 19:00), and run Thu/Fri peaks with a mobile ETD team on the SP3 queue. Modelled p95 wait stays under 10 min in all but 2 hours.","cost_of_no_action":2781},"workforce":{"headcount":312,"full_time":168,"part_time":118,"casual":26,"on_shift_now":66,"required_now":52,"ratio_platform":1.26,"ratio_industry_low":1.5,"ratio_industry_high":1.6,"ratio_before":1.54,"casual_share_pct":8.3,"casual_share_before_pct":19.0,"shift_length_h":9.5,"days_per_fortnight":8,"ea_checks":[{"rule":"Max shift length 9.5 h","status":"pass"},{"rule":"Min 10 h break between shifts","status":"pass"},{"rule":"Max 8 shifts per fortnight (full-time)","status":"pass"},{"rule":"Meal break within 5 h of start","status":"pass"},{"rule":"Casual minimum engagement 4 h","status":"pass"},{"rule":"Weekend penalty allocation balanced","status":"pass"}],"annual_officer_hours_saved":93600,"hours":[{"h":0,"required":36.0,"rostered":46.7,"kind":"actual"},{"h":1,"required":36.0,"rostered":44.3,"kind":"actual"},{"h":2,"required":36.0,"rostered":45.1,"kind":"actual"},{"h":3,"required":36.0,"rostered":44.9,"kind":"actual"},{"h":4,"required":36.0,"rostered":46.3,"kind":"actual"},{"h":5,"required":74.5,"rostered":92.5,"kind":"actual"},{"h":6,"required":80.0,"rostered":98.9,"kind":"actual"},{"h":7,"required":69.0,"rostered":86.7,"kind":"actual"},{"h":8,"required":52.5,"rostered":65.8,"kind":"actual"},{"h":9,"required":52.5,"rostered":65.3,"kind":"actual"},{"h":10,"required":52.5,"rostered":65.2,"kind":"actual"},{"h":11,"required":52.5,"rostered":67.8,"kind":"actual"},{"h":12,"required":58.0,"rostered":72.8,"kind":"actual"},{"h":13,"required":52.5,"rostered":67.6,"kind":"actual"},{"h":14,"required":52.5,"rostered":66.3,"kind":"forecast"},{"h":15,"required":52.5,"rostered":64.4,"kind":"forecast"},{"h":16,"required":63.5,"rostered":82.4,"kind":"forecast"},{"h":17,"required":63.5,"rostered":81.6,"kind":"forecast"},{"h":18,"required":52.5,"rostered":68.0,"kind":"forecast"},{"h":19,"required":52.5,"rostered":67.8,"kind":"forecast"},{"h":20,"required":41.5,"rostered":53.4,"kind":"forecast"},{"h":21,"required":36.0,"rostered":44.5,"kind":"forecast"},{"h":22,"required":36.0,"rostered":45.3,"kind":"forecast"},{"h":23,"required":36.0,"rostered":44.6,"kind":"forecast"}],"uncover_ranking":[{"rank":1,"position":"SP4 Staff & Crew, 2nd officer","window":"13:00 to 15:00","impact_score":4,"reason":"Crew flow 38/h, single lane handles 187/h; no passenger KPI exposure"},{"rank":2,"position":"T1 landside roving patrol B","window":"10:00 to 12:00","impact_score":7,"reason":"Patrol A and control room CCTV cover the same zone; incident rate in window 0.2/day"},{"rank":3,"position":"SP2 bag search, 3rd officer","window":"14:00 to 16:00","impact_score":11,"reason":"Bag reject rate 6% in window; 2 officers clear it within 4 min p95"},{"rank":4,"position":"T2 arrivals hall ID check overlap","window":"09:00 to 10:00","impact_score":14,"reason":"Handover overlap of 60 min exceeds the 20 min needed"},{"rank":5,"position":"SP1 loader, lane 4","window":"11:00 to 12:00","impact_score":22,"reason":"Lane 4 required only 11:20 to 11:50; passengers absorb 1.4 min extra wait"},{"rank":6,"position":"SP3 supervisor float","window":"20:00 to 22:00","impact_score":41,"reason":"Last international bank; escalation path drops to control room"},{"rank":7,"position":"SP1 lane 2 screener","window":"05:00 to 07:00","impact_score":88,"reason":"Peak bank; closing lane 2 breaches 10 min KPI for 1,340 passengers"}],"scenario_lanes_down":{"description":"SP3 with 3 lanes Thu 24 to Fri 25 Sep","extra_officer_hours":0,"reallocation":"Move 1 screener from SP4 13:00 to 15:00 and 2 from SP2 16:00 to 19:00 into SP3; pre-screen transfers at SP1 lane 4","wait_kpi_result":"KPI held on all hours except Fri 06:00 (11.4 min p95)"}},"assets":[{"id":"CT-SP3-03","type":"CT screening unit","location":"SP3 lane 3","age_yrs":6.2,"health":61,"trend":"falling","signal":"X-ray generator tube current drift +9% over 21 days; image quality index 0.91 (limit 0.88)","failure_window":"4 to 11 Oct","parts_lead_days":42,"downtime_cost_day":18400,"recommendation":"Order generator now (AUD 68k). Swap during Thu/Fri night window; lane 3 closed 2 days instead of an unplanned 6 week outage.","action_by":"2026-09-24"},{"id":"XR-SP1-02","type":"X-ray unit","location":"SP1 lane 2","age_yrs":9.8,"health":72,"trend":"stable","signal":"Conveyor motor vibration 2.1 mm/s (limit 2.8)","failure_window":"Nov to Dec","parts_lead_days":21,"downtime_cost_day":16200,"recommendation":"Schedule motor replacement in October low period. Parts in stock.","action_by":"2026-10-15"},{"id":"ESC-T1-02","type":"Escalator","location":"T1 departures, north","age_yrs":14.3,"health":48,"trend":"falling","signal":"3 unplanned stops in 30 days; step chain wear 82%; parts discontinued","failure_window":"Oct to Nov","parts_lead_days":120,"downtime_cost_day":9800,"recommendation":"Replace rather than repair. Lead time 4 months; order now to avoid a winter outage.","action_by":"2026-10-01"},{"id":"ESC-T2-04","type":"Escalator","location":"T2 arrivals","age_yrs":7.1,"health":83,"trend":"stable","signal":"Within limits","failure_window":"None predicted (12 months)","parts_lead_days":30,"downtime_cost_day":6400,"recommendation":"Routine service Dec.","action_by":"2026-12-05"},{"id":"LIFT-T2-01","type":"Passenger lift","location":"T2 car park link","age_yrs":11.6,"health":66,"trend":"falling","signal":"Door cycle faults up 3x since August","failure_window":"Dec to Jan","parts_lead_days":90,"downtime_cost_day":4100,"recommendation":"Order door operator kit now; install before the December peak.","action_by":"2026-10-10"},{"id":"TRV-T2-01","type":"Travelator","location":"T2 pier B","age_yrs":8.9,"health":77,"trend":"stable","signal":"Pallet noise flagged by 2 staff reports; vibration within limits","failure_window":"None predicted (6 months)","parts_lead_days":45,"downtime_cost_day":2900,"recommendation":"Inspect at next service.","action_by":"2026-11-02"},{"id":"CART-06","type":"Electric passenger cart","location":"T2 pier A","age_yrs":4.4,"health":39,"trend":"falling","signal":"Battery capacity 58% of rated; two mid-shift failures this month","failure_window":"Next 2 weeks","parts_lead_days":10,"downtime_cost_day":900,"recommendation":"Replace battery pack (AUD 3.2k). Keep CART-02 as backup on pier A.","action_by":"2026-09-26"},{"id":"BHS-T1-B2","type":"Baggage belt","location":"T1 make-up B2","age_yrs":12.0,"health":58,"trend":"falling","signal":"Bearing temperature +11 C above baseline","failure_window":"Oct","parts_lead_days":14,"downtime_cost_day":22000,"recommendation":"Replace drive bearings this week (AUD 4.8k); unplanned failure would cost 22k/day.","action_by":"2026-09-27"},{"id":"CT-SP3-01","type":"CT screening unit","location":"SP3 lane 1","age_yrs":3.1,"health":94,"trend":"stable","signal":"Within limits","failure_window":"None predicted (12 months)","parts_lead_days":42,"downtime_cost_day":18400,"recommendation":"No action.","action_by":""},{"id":"XR-SP2-03","type":"X-ray unit","location":"SP2 lane 3","age_yrs":8.4,"health":79,"trend":"stable","signal":"Within limits","failure_window":"None predicted (6 months)","parts_lead_days":21,"downtime_cost_day":16200,"recommendation":"No action.","action_by":""},{"id":"HVAC-T2-AHU3","type":"Air handling unit","location":"T2 departures lounge","age_yrs":10.2,"health":69,"trend":"falling","signal":"Filter differential pressure high; fan power +7%","failure_window":"Nov","parts_lead_days":7,"downtime_cost_day":3500,"recommendation":"Filter change next week; saves an estimated AUD 1.1k/month in energy.","action_by":"2026-09-30"},{"id":"LIGHT-T2-HB","type":"High-bay lighting (412 fittings)","location":"T2 departures ceiling","age_yrs":5.5,"health":81,"trend":"stable","signal":"23 fittings failed; 31 more predicted to fail by mid Oct","failure_window":"Rolling","parts_lead_days":5,"downtime_cost_day":0,"recommendation":"Bundle 54 replacements into one EWP hire (AUD 1.85k/day, 2 days) instead of six separate call-outs (AUD 11.1k).","action_by":"2026-10-12"}],"assets_summary":{"total_monitored":214,"at_risk":6,"critical":2,"avoided_downtime_cost_90d":186000,"predicted_failures_30d":4},"facilities":{"restrooms":[{"id":"RR-01","name":"T1 landside north","terminal":"T1","uses_today":316,"cleans_required":6,"cleans_verified":6,"compliance_pct":100,"next_due":"22 min","last_clean":"13:11"},{"id":"RR-02","name":"T1 landside south","terminal":"T1","uses_today":200,"cleans_required":5,"cleans_verified":5,"compliance_pct":100,"next_due":"29 min","last_clean":"12:22"},{"id":"RR-03","name":"T1 airside gate 1-6","terminal":"T1","uses_today":417,"cleans_required":6,"cleans_verified":5,"compliance_pct":83,"next_due":"Now","last_clean":"13:33"},{"id":"RR-04","name":"T1 airside gate 7-12","terminal":"T1","uses_today":695,"cleans_required":7,"cleans_verified":7,"compliance_pct":100,"next_due":"43 min","last_clean":"12:44"},{"id":"RR-05","name":"T1 food court","terminal":"T1","uses_today":270,"cleans_required":6,"cleans_verified":6,"compliance_pct":100,"next_due":"50 min","last_clean":"13:55"},{"id":"RR-06","name":"T2 landside","terminal":"T2","uses_today":447,"cleans_required":6,"cleans_verified":6,"compliance_pct":100,"next_due":"57 min","last_clean":"12:06"},{"id":"RR-07","name":"T2 airside pier A","terminal":"T2","uses_today":452,"cleans_required":6,"cleans_verified":4,"compliance_pct":67,"next_due":"Now","last_clean":"13:17"},{"id":"RR-08","name":"T2 airside pier B","terminal":"T2","uses_today":437,"cleans_required":6,"cleans_verified":5,"compliance_pct":83,"next_due":"Now","last_clean":"12:28"},{"id":"RR-09","name":"T2 duty free","terminal":"T2","uses_today":505,"cleans_required":7,"cleans_verified":7,"compliance_pct":100,"next_due":"78 min","last_clean":"13:39"},{"id":"RR-10","name":"T2 arrivals hall","terminal":"T2","uses_today":518,"cleans_required":7,"cleans_verified":7,"compliance_pct":100,"next_due":"85 min","last_clean":"12:50"},{"id":"RR-11","name":"T2 baggage reclaim","terminal":"T2","uses_today":369,"cleans_required":6,"cleans_verified":6,"compliance_pct":100,"next_due":"92 min","last_clean":"13:01"},{"id":"RR-12","name":"Staff amenities","terminal":"BOH","uses_today":424,"cleans_required":6,"cleans_verified":6,"compliance_pct":100,"next_due":"99 min","last_clean":"12:12"}],"compliance_pct":95,"rfid_tagged_equipment":186,"verified_cleans_today":70,"lighting":{"fittings":412,"failed":23,"predicted_fail_30d":31,"ewp_day_cost":1850,"callouts_avoided":6,"saving":7400},"windows":{"panels":1240,"last_wash":"2026-08-04","complaints_30d":14,"recommendation":"Move from fixed 8-week cycle to complaint-and-weather triggered; modelled saving AUD 38k/yr"},"cleaning_forecast":[{"date":"2026-09-24","dow":"Thu","required":182,"capacity":190},{"date":"2026-09-25","dow":"Fri","required":208,"capacity":190},{"date":"2026-09-26","dow":"Sat","required":159,"capacity":190},{"date":"2026-09-27","dow":"Sun","required":197,"capacity":190},{"date":"2026-09-28","dow":"Mon","required":188,"capacity":190},{"date":"2026-09-29","dow":"Tue","required":164,"capacity":190},{"date":"2026-09-30","dow":"Wed","required":165,"capacity":190}]},"retail":{"zones":[{"zone":"T1 landside cafe strip","footfall":6420,"dwell_min":9,"conversion_pct":21,"spend_per_pax":4.1,"revenue_today":26322},{"zone":"T1 airside food","footfall":7180,"dwell_min":18,"conversion_pct":38,"spend_per_pax":9.6,"revenue_today":68928},{"zone":"T1 airside news & travel","footfall":7180,"dwell_min":6,"conversion_pct":17,"spend_per_pax":2.9,"revenue_today":20822},{"zone":"T2 duty free walk-through","footfall":3890,"dwell_min":11,"conversion_pct":29,"spend_per_pax":18.4,"revenue_today":71576},{"zone":"T2 pier B food court","footfall":2940,"dwell_min":24,"conversion_pct":44,"spend_per_pax":13.2,"revenue_today":38808},{"zone":"T2 pier A (no offer)","footfall":1310,"dwell_min":31,"conversion_pct":0,"spend_per_pax":0.0,"revenue_today":0}],"revenue_today":226456,"revenue_per_pax":12.83,"forecast_next7":[{"date":"2026-09-24","dow":"Thu","revenue":256971},{"date":"2026-09-25","dow":"Fri","revenue":308778},{"date":"2026-09-26","dow":"Sat","revenue":213360},{"date":"2026-09-27","dow":"Sun","revenue":287216},{"date":"2026-09-28","dow":"Mon","revenue":269426},{"date":"2026-09-29","dow":"Tue","revenue":223262},{"date":"2026-09-30","dow":"Wed","revenue":225827}],"insight_pier_a":"Pier A passengers dwell 31 min with no retail offer. 1,310 passengers/day at the T2 average of AUD 13.20 spend is AUD 17k/day of unserved demand. A pop-up cafe at gate 21 recovers an estimated 45% of it.","ad_placement":"Highest attention point is the SP3 exit corridor (94% of T2 passengers pass at walking pace 0.9 m/s). Current advertising is at the T2 entrance where 58% pass at 1.4 m/s."},"journey":{"funnel":[{"stage":"Arrived at precinct","pax":19067,"note":"Car park, taxi, rideshare, rail"},{"stage":"Entered terminal","pax":18714,"note":"Includes meeters and greeters"},{"stage":"Check-in / bag drop","pax":12535,"note":"29% go straight to screening (no bag)"},{"stage":"Screening","pax":17655,"note":"All departing passengers"},{"stage":"Airside retail or food","pax":11123,"note":"63% make at least one stop"},{"stage":"Boarded","pax":17514,"note":"0.8% no-show or missed"}],"dwell":[{"zone":"Kerb to terminal","minutes":6,"target":8,"status":"good"},{"zone":"Check-in queue","minutes":9,"target":8,"status":"watch"},{"zone":"Screening queue","minutes":7.5,"target":10,"status":"good"},{"zone":"Screening process","minutes":2.1,"target":3,"status":"good"},{"zone":"Airside dwell","minutes":52,"target":45,"status":"opportunity"},{"zone":"Gate wait","minutes":18,"target":15,"status":"watch"}],"arrival_profile":[{"bucket":"120+","pct":6},{"bucket":"90-120","pct":14},{"bucket":"60-90","pct":31},{"bucket":"45-60","pct":27},{"bucket":"30-45","pct":16},{"bucket":"<30","pct":6}],"heatmap_zones":["Kerb","Check-in","SP1","SP2","SP3","T1 airside","T2 airside","Gates"],"heatmap":[{"zone":"Kerb","values":[1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8,4,4]},{"zone":"Check-in","values":[1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8,4,4]},{"zone":"SP1","values":[3,1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8,4]},{"zone":"SP2","values":[3,1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8,4]},{"zone":"SP3","values":[3,1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8,4]},{"zone":"T1 airside","values":[3,3,1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8]},{"zone":"T2 airside","values":[3,3,1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15,8]},{"zone":"Gates","values":[3,3,3,1,1,5,26,87,100,69,46,42,45,51,56,48,43,49,60,64,55,38,25,15]}]},"flights":[{"flt":"MA 412","from":"Singapore","sched":"15:20","est":"16:15","status":"Delayed 55 min","gate":"24","pax":186,"transfer":64},{"flt":"MA 118","from":"Sydney","sched":"15:35","est":"15:35","status":"On time","gate":"12","pax":174,"transfer":0},{"flt":"KX 907","from":"Auckland","sched":"16:05","est":"16:05","status":"On time","gate":"22","pax":201,"transfer":38},{"flt":"MA 220","from":"Brisbane","sched":"16:10","est":"16:20","status":"Delayed 10 min","gate":"8","pax":166,"transfer":0},{"flt":"PV 55","from":"Denpasar","sched":"16:40","est":"16:40","status":"On time","gate":"24","pax":212,"transfer":12}],"disruption":{"trigger":"MA 412 from Singapore delayed 55 min (arrives 16:15 instead of 15:20)","cascade":[{"step":1,"area":"Gate","effect":"Gate 24 now double-booked with PV 55 at 16:40. Turnaround overlap 25 min.","severity":"high","action":"Reassign PV 55 to gate 26 (free 16:00 to 18:30). Notify ground handling by 15:00."},{"step":2,"area":"Screening","effect":"64 transfer passengers reach SP3 at 16:40 on top of the 17:00 peak. Predicted p95 wait 13.8 min with 3 lanes open (KPI 10).","severity":"high","action":"Open SP3 lane 4 from 16:30. Cost 2.5 officer hours; avoids KPI breach for 620 passengers."},{"step":3,"area":"Workforce","effect":"Lane 4 needs 2 screeners. SP4 is over-covered 16:00 to 18:00.","severity":"medium","action":"Move 2 officers from SP4 to SP3 at 16:20. EA compliant, no overtime."},{"step":4,"area":"Cleaning","effect":"Gate 24 lounge and RR-08 restroom get 400 extra uses between 16:15 and 17:30.","severity":"medium","action":"Bring RR-08 clean forward to 16:00 and add one at 17:15."},{"step":5,"area":"Retail","effect":"186 passengers now dwell at pier B for 40 min longer than planned.","severity":"low","action":"Pier B food court: extend afternoon staffing by 1 to 18:00. Estimated extra revenue AUD 2.4k."}],"if_ignored":"KPI breach 16:40 to 17:40 at SP3 (13.8 min p95), 620 passengers affected, 2 missed connections predicted, complaint volume +18 for the day.","if_actioned":"KPI held (9.1 min p95). Net cost 2.5 officer hours (AUD 140). Revenue upside AUD 2.4k."},"alerts":[{"level":"high","module":"security","text":"SP3 will breach the 10 min wait KPI 17:00 to 19:00 today with 3 lanes open. Open lane 4 from 16:30."},{"level":"high","module":"assets","text":"CT-SP3-03 generator predicted to fail 4 to 11 Oct. Parts lead 42 days. Order today to swap in the Thu/Fri window."},{"level":"medium","module":"disruption","text":"MA 412 delayed 55 min. Gate 24 conflict with PV 55 at 16:40. Five downstream actions recommended."},{"level":"medium","module":"facilities","text":"RR-07 T2 pier A is 2 cleans behind verified schedule. 480 uses since last verified clean."},{"level":"low","module":"passenger","text":"Thu to Sun long weekend: departing passengers forecast +16% Fri, +14% Sun. Roster and cleaning capacity already adjusted."}]};</script>
+<script>/* Minimal dependency-free SVG charts. All return an SVG string sized by viewBox and scaled by CSS. */
+const C = (() => {
+  const fmt = (n, d = 0) => Number(n).toLocaleString('en-AU', { maximumFractionDigits: d, minimumFractionDigits: d });
+  const k = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k' : String(Math.round(n));
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  function scale(dmin, dmax, rmin, rmax) { return v => rmin + (v - dmin) / ((dmax - dmin) || 1) * (rmax - rmin); }
+  function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const m = v / p; const n = m <= 1 ? 1 : m <= 1.2 ? 1.2 : m <= 1.5 ? 1.5 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 3 ? 3 : m <= 4 ? 4 : m <= 5 ? 5 : m <= 6 ? 6 : m <= 8 ? 8 : 10; return n * p; }
+
+  /* line chart: series [{values,color,dash,band:[lo[],hi[]],label}] with categorical x labels */
+  function lineDraw(o) {
+    const fs = o.fs || 16, f = (fs * 0.68).toFixed(1), fb = (fs * 0.62).toFixed(1);
+    const W = o.w || 640, H = o.h || 240, pl = fs * 3.1, pr = fs * 0.8, pt = fs * 1.1, pb = fs * 1.6;
+    const n = o.labels.length;
+    const all = o.series.flatMap(s => s.values.filter(v => v != null).concat(s.band ? s.band[1] : []));
+    const ymax = o.ymax || niceMax(Math.max(...all) * 1.08), ymin = o.ymin ?? 0;
+    const sx = scale(0, n - 1, pl, W - pr), sy = scale(ymin, ymax, H - pb, pt);
+    let g = '';
+    // gridlines
+    for (let i = 0; i <= 4; i++) { const v = ymin + (ymax - ymin) * i / 4, y = sy(v); g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="#EEF2F7"/><text x="${pl - 6}" y="${y + 4}" font-size="${f}" text-anchor="end">${o.yFmt ? o.yFmt(v) : k(v)}</text>`; }
+    // x labels
+    const every = o.xEvery || Math.ceil(n / 8);
+    o.labels.forEach((l, i) => { if (i % every === 0 || i === n - 1) g += `<text x="${sx(i)}" y="${H - 8}" font-size="${f}" text-anchor="middle">${esc(l)}</text>`; });
+    // split marker (actual vs forecast)
+    if (o.splitIdx != null) { const x = sx(o.splitIdx); g += `<line x1="${x}" x2="${x}" y1="${pt}" y2="${H - pb}" stroke="#94A3B8" stroke-dasharray="3 3"/><rect x="${x}" y="${pt}" width="${W - pr - x}" height="${H - pb - pt}" fill="#4F46E5" opacity=".035"/><text x="${x + 5}" y="${pt + 11}" font-size="${fb}" fill="#4F46E5" font-weight="600">FORECAST</text>`; }
+    if (o.hline) { const y = sy(o.hline.y), left = o.hline.pos === 'left'; g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="${o.hline.color || '#DC2626'}" stroke-dasharray="6 4" stroke-width="1.5"/><text x="${left ? pl + 4 : W - pr}" y="${y - 5}" font-size="${fb}" text-anchor="${left ? 'start' : 'end'}" fill="${o.hline.color || '#DC2626'}" font-weight="600">${esc(o.hline.label)}</text>`; }
+    o.series.forEach(s => {
+      if (s.band) { let d = ''; s.band[0].forEach((v, i) => { if (v != null) d += (d ? 'L' : 'M') + sx(i) + ' ' + sy(v); }); for (let i = s.band[1].length - 1; i >= 0; i--) { const v = s.band[1][i]; if (v != null) d += 'L' + sx(i) + ' ' + sy(v); } g += `<path d="${d}Z" fill="${s.color}" opacity=".13"/>`; }
+      let d = '', started = false; s.values.forEach((v, i) => { if (v == null) { started = false; return; } d += (started ? 'L' : 'M') + sx(i) + ' ' + sy(v); started = true; });
+      if (s.area) g += `<path d="${d}L${sx(s.values.length - 1)} ${sy(ymin)}L${sx(0)} ${sy(ymin)}Z" fill="${s.color}" opacity=".08"/>`;
+      g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.width || 2.5}" ${s.dash ? 'stroke-dasharray="6 4"' : ''} stroke-linejoin="round" stroke-linecap="round"/>`;
+      if (s.dots) s.values.forEach((v, i) => { if (v != null) g += `<circle cx="${sx(i)}" cy="${sy(v)}" r="3" fill="#fff" stroke="${s.color}" stroke-width="2"/>`; });
+      if (s.endLabel) { const li = s.values.length - 1; g += `<text x="${sx(li) + 4}" y="${sy(s.values[li]) + 4}" font-size="${f}" fill="${s.color}" font-weight="600">${esc(s.endLabel)}</text>`; }
+    });
+    (o.marks || []).forEach(m => { const x = sx(m.i), y = sy(m.v); g += `<circle cx="${x}" cy="${y}" r="6" fill="${m.color || '#DC2626'}" opacity=".2"/><circle cx="${x}" cy="${y}" r="3.5" fill="${m.color || '#DC2626'}"/>${m.label ? `<text x="${x}" y="${y - 10}" font-size="${fb}" text-anchor="middle" fill="${m.color || '#DC2626'}" font-weight="600">${esc(m.label)}</text>` : ''}`; });
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" >${g}</svg>`;
+  }
+
+  /* vertical bars, optionally grouped: series [{values,color,label}] */
+  function barsDraw(o) {
+    const fs = o.fs || 16, f = (fs * 0.68).toFixed(1), fb = (fs * 0.62).toFixed(1);
+    const W = o.w || 640, H = o.h || 240, pl = fs * 3.1, pr = fs * 0.8, pt = fs * 1.2, pb = fs * 1.6;
+    const n = o.labels.length, m = o.series.length;
+    const dmax = Math.max(...o.series.flatMap(s => s.values)); const ymax = Math.max(o.ymax || 0, o.ymax ? dmax * 1.02 : niceMax(dmax * 1.1));
+    const sy = scale(0, ymax, H - pb, pt), bw = (W - pl - pr) / n, gap = bw * 0.22, w = (bw - gap) / m;
+    let g = '';
+    for (let i = 0; i <= 4; i++) { const v = ymax * i / 4, y = sy(v); g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="#EEF2F7"/><text x="${pl - 6}" y="${y + 4}" font-size="${f}" text-anchor="end">${o.yFmt ? o.yFmt(v) : k(v)}</text>`; }
+    const every = o.xEvery || Math.ceil(n / 12);
+    o.labels.forEach((l, i) => { if (i % every === 0) g += `<text x="${pl + bw * i + bw / 2}" y="${H - 8}" font-size="${f}" text-anchor="middle">${esc(l)}</text>`; });
+    if (o.hline) { const y = sy(o.hline.y), left = o.hline.pos === 'left', tw = o.hline.label.length * fs * 0.38 + fs * 0.4; const dy = o.hline.below ? fs * 1.1 : 0; g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="${o.hline.color || '#DC2626'}" stroke-dasharray="6 4" stroke-width="1.5"/><rect x="${left ? pl + 2 : W - pr - tw}" y="${y - fs * 1.05 + dy}" width="${tw}" height="${fs * 0.95}" rx="3" fill="#fff" opacity=".9"/><text x="${left ? pl + fs * 0.25 : W - pr - fs * 0.2}" y="${y - fs * 0.35 + dy}" font-size="${fb}" text-anchor="${left ? 'start' : 'end'}" fill="${o.hline.color || '#DC2626'}" font-weight="600">${esc(o.hline.label)}</text>`; }
+    o.series.forEach((s, j) => s.values.forEach((v, i) => {
+      const x = pl + bw * i + gap / 2 + w * j, y = sy(v), col = (s.colors && s.colors[i]) || s.color;
+      g += `<rect x="${x}" y="${y}" width="${w - 1}" height="${Math.max(0, H - pb - y)}" rx="3" fill="${col}" ${s.hatch && s.hatch[i] ? 'opacity=".45"' : ''}/>`;
+      if (s.valueLabels) g += `<text x="${x + w / 2}" y="${y - 4}" font-size="${fb}" text-anchor="middle" fill="#334155" font-weight="600">${o.yFmt ? o.yFmt(v) : k(v)}</text>`;
+    }));
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" >${g}</svg>`;
+  }
+
+  /* horizontal bars: items [{label,value,color,sub}] */
+  function hbars(o) {
+    const max = o.max || niceMax(Math.max(...o.items.map(i => i.value)));
+    return `<div class="rows">${o.items.map(it => `<div class="row" style="background:#fff;border:1px solid var(--line);padding:.3rem .7rem"><div class="m" style="flex:0 0 ${o.lw || '11rem'}"><span style="font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(it.label)}">${esc(it.label)}</span>${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</div><div style="flex:1"><div class="bar" style="height:.9rem"><i style="width:${it.value / max * 100}%;background:${it.color || 'var(--accent)'}"></i></div></div><div class="s num" style="width:5.5rem;text-align:right;font-size:.9rem">${it.text ?? fmt(it.value)}</div></div>`).join('')}</div>`;
+  }
+
+  function sparkDraw(o) {
+    const values = o.values, color = o.color, band = o.band;
+    const W = o.w || 200, H = o.h || 44, n = values.length, mx = Math.max(...values, ...(band ? band[1] : [])), mn = Math.min(...values) * 0.9;
+    const sx = scale(0, n - 1, 2, W - 2), sy = scale(mn, mx, H - 3, 3);
+    let d = ''; values.forEach((v, i) => d += (i ? 'L' : 'M') + sx(i) + ' ' + sy(v));
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}"><path d="${d}L${sx(n - 1)} ${H}L${sx(0)} ${H}Z" fill="${color}" opacity=".1"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/><circle cx="${sx(n - 1)}" cy="${sy(values[n - 1])}" r="3.5" fill="${color}"/></svg>`;
+  }
+
+  /* ring gauge */
+  function ring(pct, color, label, sub) {
+    const r = 40, c = 2 * Math.PI * r, off = c * (1 - Math.min(1, pct / 100));
+    return `<svg viewBox="0 0 100 100" style="width:100%;height:100%"><circle cx="50" cy="50" r="${r}" fill="none" stroke="#EEF2F7" stroke-width="10"/><circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="10" stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round" transform="rotate(-90 50 50)"/><text x="50" y="50" text-anchor="middle" font-size="20" font-weight="700" fill="#0F172A">${esc(label)}</text>${sub ? `<text x="50" y="66" text-anchor="middle" font-size="9" fill="#64748B">${esc(sub)}</text>` : ''}</svg>`;
+  }
+
+  function heat(zones, hours) {
+    const col = v => { const t = v / 100; return `rgba(37,99,235,${0.06 + t * 0.9})`; };
+    let h = `<div class="hm"><div></div>${hours.map(x => `<div class="h">${x % 3 === 0 ? String(x).padStart(2, '0') : ''}</div>`).join('')}`;
+    zones.forEach(z => { h += `<div class="z">${esc(z.zone)}</div>` + z.values.map(v => `<div class="c" style="background:${col(v)}" title="${z.zone} ${v}"></div>`).join(''); });
+    return h + '</div>';
+  }
+
+  /* deferred rendering: charts are drawn at the real pixel size of their slot */
+  const REG = [];
+  const slot = (fn, o) => { REG.push({ fn, o }); return `<div class="chart-slot" data-ci="${REG.length - 1}"></div>`; };
+  function draw(el) {
+    const r = REG[+el.dataset.ci]; if (!r) return;
+    const w = el.clientWidth || 600, h = el.clientHeight || 220;
+    if (el.dataset.w == w && el.dataset.h == h) return;
+    const fs = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    el.innerHTML = r.fn({ ...r.o, w, h, fs });
+    el.dataset.done = 1; el.dataset.w = w; el.dataset.h = h;
+  }
+  const RO = window.ResizeObserver ? new ResizeObserver(entries => entries.forEach(e => draw(e.target))) : null;
+  function mount(root) {
+    (root || document).querySelectorAll('.chart-slot:not([data-done])').forEach(el => { draw(el); if (RO) RO.observe(el); });
+  }
+  function remount() { document.querySelectorAll('.chart-slot').forEach(el => { delete el.dataset.done; delete el.dataset.w; }); mount(); }
+  window.addEventListener('resize', () => { clearTimeout(window.__rt); window.__rt = setTimeout(remount, 150); });
+  return { line: o => slot(lineDraw, o), bars: o => slot(barsDraw, o), spark: (values, color, band) => slot(sparkDraw, { values, color, band }), lineDraw, barsDraw, hbars, ring, heat, fmt, k, esc, niceMax, mount, remount };
+})();
+</script>
+<script>/* Airport Intelligence Platform: application shell and module pages */
+const D = window.DATA;
+const $ = s => document.querySelector(s);
+const fmt = C.fmt, esc = C.esc;
+const AUD = n => 'AUD ' + (n >= 1000 ? fmt(n / 1000, n >= 100000 ? 0 : 1) + 'k' : fmt(n));
+const hh = h => String(h).padStart(2, '0') + ':00';
+const NOW = 14;
+const today = D.days.find(d => d.offset === 0);
+const daysAll = D.days;
+
+const MODULES = [
+  { id: 'home', name: 'Overview', color: 'var(--c-home)', key: 'H' },
+  { id: 'passenger', name: 'Passenger Journey', color: 'var(--c-passenger)', key: '1', icon: '&#9992;' },
+  { id: 'security', name: 'Security & Screening', color: 'var(--c-security)', key: '2', icon: '&#9737;' },
+  { id: 'workforce', name: 'Workforce & Rostering', color: 'var(--c-workforce)', key: '3', icon: '&#9786;' },
+  { id: 'assets', name: 'Assets & Maintenance', color: 'var(--c-assets)', key: '4', icon: '&#9881;' },
+  { id: 'facilities', name: 'Facilities & Cleaning', color: 'var(--c-facilities)', key: '5', icon: '&#10004;' },
+  { id: 'retail', name: 'Retail & Commercial', color: 'var(--c-retail)', key: '6', icon: '&#9733;' },
+  { id: 'disruption', name: 'Disruption Impact', color: 'var(--c-disruption)', key: '7', icon: '&#9888;' },
+  { id: 'ask', name: 'Ask the Airport', color: 'var(--c-ask)', key: 'A', icon: '&#10024;' },
+];
+
+/* ---------- shared components ---------- */
+const ai = (text, who) => `<div class="ai"><span class="sp">AI</span><div>${text}</div></div>`;
+const card = (o) => `<div class="card" style="${o.style || ''}"><h3>${o.title}${o.tag ? `<span class="tag ${o.tagClass || 'forecast'}">${o.tag}</span>` : ''}</h3>${o.sub ? `<div class="sub">${o.sub}</div>` : ''}<div class="body" style="${o.bodyStyle || ''}">${o.body}</div>${o.ai ? ai(o.ai) : ''}</div>`;
+const band = (now, next, act) => `<div class="band"><div class="seg now"><div class="k"><i></i>Now</div><div class="t">${now}</div></div><div class="seg next"><div class="k"><i></i>Next 7 days</div><div class="t">${next}</div></div><div class="seg act"><div class="k"><i></i>Recommended action</div><div class="t">${act}</div></div></div>`;
+const statusTag = s => ({ good: 'good', watch: 'watch', bad: 'bad', opportunity: 'info' }[s] || 'neutral');
+const healthCol = h => h < 50 ? 'var(--bad)' : h < 70 ? 'var(--watch)' : 'var(--good)';
+const kpi = (l, v, unit, d, cls) => `<div class="kpi"><div class="l">${l}</div><div class="v num">${v}${unit ? `<small>${unit}</small>` : ''}</div><div class="d ${cls || ''}">${d}</div></div>`;
+
+/* derived numbers used in several places */
+const spNow = D.screening.map(s => s.hours[NOW]);
+const waitNow = (spNow.reduce((a, h) => a + h.wait_p95 * h.pax, 0) / spNow.reduce((a, h) => a + h.pax, 0));
+const lanesOpenNow = spNow.reduce((a, h) => a + h.lanes_open, 0);
+const sp3 = D.screening.find(s => s.id === 'SP3');
+const breachHours = sp3.hours.filter(h => h.wait_p95 > D.kpi.wait_target_min);
+const paxAffectedToday = breachHours.reduce((a, h) => a + h.pax, 0);
+const reqTotal = D.workforce.hours.reduce((a, h) => a + h.required, 0);
+const rostTotal = D.workforce.hours.reduce((a, h) => a + h.rostered, 0);
+const next7 = daysAll.filter(d => d.offset >= 1);
+const last7 = daysAll.filter(d => d.offset < 0);
+const fri = next7.find(d => d.dow === 'Fri');
+const pctDiff = (a, b) => ((a - b) / b * 100);
+const wfForecast = next7.map(d => ({ ...d, required: Math.round(reqTotal * d.total / today.total), capacity: Math.round(rostTotal) }));
+const atRisk = D.assets.filter(a => a.health < 70).sort((a, b) => a.health - b.health);
+const rrBehind = D.facilities.restrooms.filter(r => r.cleans_verified < r.cleans_required);
+const pierA = D.retail.zones.find(z => z.zone.startsWith('T2 pier A'));
+const ctTrend = (() => { const v = []; for (let i = 0; i < 30; i++) v.push(+(0.972 - 0.062 * Math.pow(i / 29, 1.6) + (i % 4 === 1 ? 0.004 : i % 5 === 2 ? -0.003 : 0)).toFixed(3)); return v; })();
+const ctProj = (() => { const v = []; for (let i = 0; i < 16; i++) v.push(+(0.91 - 0.0025 * i - 0.00007 * i * i).toFixed(3)); return v; })();
+
+/* ---------- pages ---------- */
+const P = {};
+
+P.home = () => {
+  const paxVs = pctDiff(today.total, D.avg_last7);
+  const tile = (m, v, unit, sparkVals, sparkColor, fc, ins) => `<button class="tile" style="--tc:${m.color}" onclick="go('${m.id}')"><div class="t"><span class="ic">${m.icon}</span>${m.name}</div><div class="v num">${v}${unit ? `<small>${unit}</small>` : ''}</div><div class="spark">${C.spark(sparkVals, sparkColor)}</div><div class="fc"><span class="tag forecast">Next 7 days</span><span>${fc}</span></div><div class="ins"><span class="sp">AI</span><span>${ins}</span></div></button>`;
+  const M = Object.fromEntries(MODULES.map(m => [m.id, m]));
+  const hourly = today.hours.map(h => h.pax);
+  return `
+  <div class="hero"><div><h2>${D.airport.name}</h2><div class="when">${D.airport.today_label}, ${D.airport.now}</div><div class="what">Live picture, 7-day outlook and the actions that matter, from ${D.airport.data_sources} operational systems.</div></div>
+    <div class="src" onclick="ALERTS.toggle(event)" style="cursor:pointer"><span style="width:.55rem;height:.55rem;border-radius:50%;background:var(--bad);display:inline-block"></span><span><b>${D.alerts.filter(a => a.level === 'high').length} high</b> and ${D.alerts.filter(a => a.level !== 'high').length} other alerts</span><span style="color:var(--info)">View &rarr;</span></div></div>
+  <div class="kpis">
+    ${kpi('Departing passengers today', fmt(today.total), '', `<span class="${paxVs < 0 ? 'down' : 'up'}">${paxVs > 0 ? '+' : ''}${paxVs.toFixed(0)}%</span> vs 7-day average`, '')}
+    ${kpi('Screening wait now (p95)', waitNow.toFixed(1), 'min', `<span class="tag good">Within KPI ${D.kpi.wait_target_min} min</span>`, '')}
+    ${kpi('Security officers on shift', D.workforce.on_shift_now, '', `${D.workforce.required_now} required, ${lanesOpenNow} of ${D.airport.screening_lanes} lanes open`, '')}
+    ${kpi('Assets at risk', D.assets_summary.at_risk, `of ${D.assets_summary.total_monitored}`, `<span class="down">${D.assets_summary.critical} critical</span>, ${D.assets_summary.predicted_failures_30d} failures predicted in 30 days`, '')}
+    ${kpi('Cleaning compliance', D.facilities.compliance_pct, '%', `${rrBehind.length} restrooms behind verified schedule`, '')}
+  </div>
+  <div class="tiles">
+    ${tile(M.passenger, fmt(D.avg_next7), 'avg / day', daysAll.map(d => d.total), '#2563EB', `<b>+${pctDiff(D.avg_next7, D.avg_last7).toFixed(0)}%</b>&nbsp;long weekend uplift`, `Friday peaks at <b>${fmt(fri.total)}</b> departing passengers, the highest day since Easter. 06:00 and 17:00 banks drive it.`)}
+    ${tile(M.security, breachHours.length, 'KPI breach hrs today', sp3.hours.map(h => h.wait_p95), '#7C3AED', `<b>${D.scenario.breach_hours} breach hrs</b>&nbsp;if SP3 lane 3 is out`, `SP3 breaches the 10 min wait KPI ${hh(breachHours[0].h)} to ${hh(breachHours[breachHours.length - 1].h + 1)} with 3 lanes open. Opening lane 4 from 16:30 clears it for <b>${fmt(paxAffectedToday)}</b> passengers.`)}
+    ${tile(M.workforce, D.workforce.ratio_platform, 'rostered : required', D.workforce.hours.map(h => h.rostered), '#0D9488', `Friday needs <b>+${pctDiff(wfForecast.find(d => d.dow === 'Fri').required, reqTotal).toFixed(0)}%</b> officer hours`, `Industry runs at 1.5 to 1.6. At ${D.workforce.ratio_platform} the roster saves about <b>${fmt(D.workforce.annual_officer_hours_saved)}</b> officer hours a year with ${D.workforce.casual_share_pct}% casuals.`)}
+    ${tile(M.assets, D.assets_summary.at_risk, 'assets at risk', ctTrend.slice(-14), '#D97706', `<b>${D.assets_summary.predicted_failures_30d} failures</b>&nbsp;predicted in 30 days`, `CT-SP3-03 generator is predicted to fail <b>4 to 11 Oct</b>. Parts take 42 days. Ordering today turns a 6 week outage into a 2 day planned swap.`)}
+    ${tile(M.facilities, D.facilities.compliance_pct + '%', 'verified cleans', D.facilities.cleaning_forecast.map(d => d.required), '#16A34A', `Fri demand <b>${D.facilities.cleaning_forecast[1].required}</b> cleans vs ${D.facilities.cleaning_forecast[1].capacity} capacity`, `RR-07 T2 pier A has had <b>${D.facilities.restrooms[6].uses_today}</b> uses and is 2 verified cleans behind. Bundling 54 light globe swaps saves <b>${AUD(D.facilities.lighting.saving)}</b>.`)}
+    ${tile(M.retail, AUD(D.retail.revenue_per_pax * 1000).replace('AUD ', 'AUD ').replace('k', ''), 'per passenger', D.retail.forecast_next7.map(f => f.revenue), '#DB2777', `<b>${AUD(D.retail.forecast_next7[1].revenue)}</b>&nbsp;forecast Friday`, `Pier A: ${fmt(pierA.footfall)} passengers dwell ${pierA.dwell_min} min with no offer. That is about <b>AUD 17k/day</b> of unserved demand.`)}
+    ${tile(M.disruption, 1, 'active cascade', [3, 4, 3, 5, 6, 9, 12, 14, 13, 8, 5, 4], '#EA580C', `<b>5 actions</b>&nbsp;recommended, 2 high priority`, `MA 412 is 55 min late. Left alone: gate 24 conflict, SP3 KPI breach for 620 passengers, 2 missed connections. Actioned: KPI held for AUD 140.`)}
+    <button class="tile ask" style="--tc:#818CF8" onclick="go('ask')"><div class="t"><span class="ic">&#10024;</span>Ask the Airport</div><div class="fc">Trained on ${D.airport.training_months} months of ${D.airport.code} operational data</div><div class="qs"><span>What needs my attention today?</span><span>Which position can I leave uncovered tomorrow?</span><span>What fails next, and what does it cost?</span><span>Will we hold the wait KPI on Friday?</span><span>Where is retail revenue being missed?</span></div><div class="ins"><span class="sp">AI</span><span>Ask in plain language. Every answer shows its evidence and the source system it came from.</span></div></button>
+  </div>`;
+};
+
+P.passenger = () => {
+  const labels = daysAll.map(d => d.dow + ' ' + d.date.slice(8));
+  const split = daysAll.findIndex(d => d.offset === 0);
+  const daily = C.line({ labels, splitIdx: split, ymin: 10000, ymax: 26000, yFmt: v => C.k(v), series: [{ values: daysAll.map(d => d.total), color: '#2563EB', dots: true, band: [daysAll.map(d => d.offset > 0 ? Math.round(d.total * (1 - 0.05 - 0.012 * d.offset)) : null), daysAll.map(d => d.offset > 0 ? Math.round(d.total * (1 + 0.05 + 0.012 * d.offset)) : null)] }], marks: [{ i: daysAll.indexOf(fri), v: fri.total, label: 'Fri ' + fmt(fri.total) }] });
+  const hourly = C.line({ labels: today.hours.map(h => hh(h.h)), xEvery: 3, splitIdx: NOW, series: [{ values: today.hours.map(h => h.pax), color: '#2563EB', area: true, band: [today.hours.map(h => h.kind === 'forecast' ? h.lo : null), today.hours.map(h => h.kind === 'forecast' ? h.hi : null)] }] });
+  const funnel = `<div class="funnel">${D.journey.funnel.map((f, i) => `<div class="f"><div>${f.stage}<small>${f.note}</small></div><div class="b" style="width:${f.pax / D.journey.funnel[0].pax * 100}%">${(f.pax / D.journey.funnel[0].pax * 100).toFixed(0)}%</div><div class="num" style="text-align:right;font-weight:600">${fmt(f.pax)}</div></div>`).join('')}</div>`;
+  const dwell = `<div class="rows">${D.journey.dwell.map(z => `<div class="row"><div class="m"><b>${z.zone}</b><small>target ${z.target} min</small></div><div style="flex:1"><div class="bar"><i style="width:${Math.min(100, z.minutes / 60 * 100)}%;background:${z.status === 'good' ? 'var(--good)' : z.status === 'watch' ? 'var(--watch)' : '#2563EB'}"></i></div></div><div class="s num" style="width:4.5rem;text-align:right">${z.minutes} min</div><span class="tag ${statusTag(z.status)}">${z.status}</span></div>`).join('')}</div>`;
+  return `<div class="grid" style="grid-template-columns:2fr 1fr">
+    ${card({ title: 'Departing passengers, last 7 days and next 7', tag: 'Forecast', sub: 'Actuals to today, forecast with confidence band from the flight schedule, bookings and 18 months of history', body: daily, ai: `Next 7 days average <b>${fmt(D.avg_next7)}</b> a day, <b>+${pctDiff(D.avg_next7, D.avg_last7).toFixed(0)}%</b> on the last 7. The long weekend and school holidays start Friday: <b>${fmt(fri.total)}</b> departing passengers, then Sunday <b>${fmt(next7.find(d => d.dow === 'Sun').total)}</b>. Roster, cleaning and retail forecasts on the other screens already carry this uplift.` })}
+    ${card({ title: 'Passenger journey today', tag: 'Live', tagClass: 'live', sub: 'Kerb to boarding, from car park sensors, check-in, screening counts and gate scans', body: funnel, ai: `<b>29%</b> of passengers skip check-in entirely, so screening demand leads the check-in queue by about 20 minutes. <b>63%</b> make a retail or food stop airside.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    ${card({ title: 'Passengers by hour today', tag: 'Forecast', sub: 'Actual to 14:00, forecast for the rest of the day', body: hourly, ai: `Evening bank peaks at <b>17:00</b> with ${fmt(today.hours[17].pax)} passengers, ${fmt(sp3.hours[17].pax)} of them international. That is the hour to watch on the Security screen.` })}
+    ${card({ title: 'Time spent per zone', tag: 'Live', tagClass: 'live', sub: 'Median minutes, from Wi-Fi and camera counts', body: dwell, ai: `Airside dwell of <b>52 min</b> is 7 min above target but that is commercial time, not queue time. Check-in queue at 9 min is the only journey stage over target.` })}
+    ${card({ title: 'Where passengers are, by hour', tag: 'Live', tagClass: 'live', sub: 'Occupancy index by zone, today', body: C.heat(D.journey.heatmap, [...Array(24).keys()]), ai: `Movement follows the flight banks with a 1 hour lag from kerb to gates. Gate occupancy stays high from 06:00 to 08:00 while kerb is quiet: the morning cleaning round is scheduled in the wrong zone.` })}
+  </div>
+  ${band(`<b>${fmt(today.total)}</b> departing passengers today, ${pctDiff(today.total, D.avg_last7).toFixed(0)}% vs the 7-day average. All journey stages within target except check-in queue (9 min vs 8).`, `Average <b>${fmt(D.avg_next7)}</b> a day. Friday ${fmt(fri.total)} and Sunday ${fmt(next7.find(d => d.dow === 'Sun').total)} are the peaks. Confidence band widens to +/-13% by day 7.`, `Bring Friday 05:00 check-in desk opening forward 30 min and move the 06:00 cleaning round from kerb to gates. Both are already reflected in the Workforce and Facilities recommendations.`)}`;
+};
+
+P.security = () => {
+  const labels = today.hours.map(h => hh(h.h));
+  const cols = { SP1: '#2563EB', SP2: '#0EA5E9', SP3: '#7C3AED', SP4: '#94A3B8' };
+  const waits = C.line({ labels, xEvery: 3, splitIdx: NOW, hline: { y: D.kpi.wait_target_min, label: 'KPI 10 min', pos: 'left' }, ymax: 24, yFmt: v => Math.round(v) + ' min', series: D.screening.map(s => ({ values: s.hours.map(h => h.wait_p95), color: cols[s.id], width: s.id === 'SP3' ? 3 : 2 })), marks: breachHours.map(h => ({ i: h.h, v: h.wait_p95, label: h.wait_p95 + ' min' })) });
+  const lanes = `<table><tr><th>Screening point</th><th class="r">Pax this hour</th><th class="r">Lanes open / needed</th><th class="r">Wait p95</th><th></th></tr>${D.screening.map(s => { const h = s.hours[NOW]; return `<tr><td><b>${s.name}</b><br><small style="color:var(--muted)">${s.id}, ${s.lanes} lanes</small></td><td class="r num">${fmt(h.pax)}</td><td class="r num">${h.lanes_open} / ${h.lanes_required}</td><td class="r num"><b>${h.wait_p95} min</b></td><td><span class="tag ${h.wait_p95 > 10 ? 'bad' : h.wait_p95 > 7 ? 'watch' : 'good'}">${h.wait_p95 > 10 ? 'breach' : h.wait_p95 > 7 ? 'watch' : 'ok'}</span></td></tr>`; }).join('')}</table>`;
+  const arr = C.bars({ labels: D.journey.arrival_profile.map(a => a.bucket + ' min'), yFmt: v => v + '%', series: [{ values: D.journey.arrival_profile.map(a => a.pct), color: '#7C3AED', valueLabels: true }] });
+  const sc = D.scenario;
+  const scen = C.bars({ labels: sc.impact_hours.map(x => x.dow + ' ' + hh(x.h)), xEvery: 1, hline: { y: 10, label: 'KPI 10 min', below: true }, yFmt: v => Math.round(v) + ' min', ymax: 32, series: [{ label: '3 lanes', values: sc.impact_hours.map(x => x.wait_with_3), color: '#DC2626', valueLabels: true }, { label: '4 lanes', values: sc.impact_hours.map(x => x.wait_with_4), color: '#7C3AED' }] });
+  return `<div class="grid" style="grid-template-columns:2fr 1fr">
+    ${card({ title: 'Predicted wait time by screening point, today', tag: 'Forecast', sub: '95th percentile minutes. Actual to 14:00, forecast from passengers per hour, lanes rostered and measured lane throughput', body: waits + `<div class="legend">${D.screening.map(s => `<span><i style="background:${cols[s.id]}"></i>${s.name}</span>`).join('')}</div>`, ai: `<b>SP3 T2 International</b> will breach the 10 min KPI at <b>17:00 (${sp3.hours[17].wait_p95} min)</b> and <b>18:00 (${sp3.hours[18].wait_p95} min)</b>. Cause: the roster was set before the long-weekend uplift and the MA 412 transfer load; 3 lanes are open against ${sp3.hours[17].lanes_required} needed. Opening lane 4 from 16:30 holds both hours under 6 min for ${fmt(paxAffectedToday)} passengers, at a cost of 2.5 officer hours.` })}
+    ${card({ title: 'Lanes right now, 14:00', tag: 'Live', tagClass: 'live', sub: `${lanesOpenNow} of ${D.airport.screening_lanes} lanes open`, body: lanes, ai: `All four points are inside KPI this hour. Measured throughput is <b>${D.kpi.lane_tph}/lane/hour</b> on domestic and 190 on CT lanes; the contract assumption of 300 has never been reached on a sustained basis.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 2fr">
+    ${card({ title: 'When passengers arrive at screening', tag: 'Live', tagClass: 'live', sub: 'Minutes before departure, share of passengers, last 12 months', body: arr, ai: `<b>58%</b> arrive 45 to 90 min before departure. Because arrival is spread, lane demand per hour is far lower than the flight schedule alone suggests. This is the basis of the roster on the Workforce screen.` })}
+    ${card({ title: 'What if: ' + sc.title, tag: 'Scenario', tagClass: 'watch', sub: sc.reason, body: scen + `<div class="legend"><span><i style="background:#DC2626"></i>3 lanes (lane 3 out)</span><span><i style="background:#7C3AED"></i>4 lanes (normal)</span></div>`, ai: `With 3 lanes, <b>${sc.breach_hours} hours breach</b> KPI and <b>${fmt(sc.pax_at_risk)}</b> passengers wait over 10 min, worst Friday 17:00 at ${Math.max(...sc.impact_hours.map(x => x.wait_with_3))} min. Mitigation: ${sc.mitigation}` })}
+  </div>
+  ${band(`All screening points within KPI at 14:00. Weighted wait <b>${waitNow.toFixed(1)} min</b>. ${lanesOpenNow} lanes open.`, `Two breach hours today at SP3 unless lane 4 opens. Friday 06:00 and 17:00 banks need all 4 SP3 lanes; the CT-SP3-03 swap must be finished by Thursday 04:00 or moved to Saturday night.`, `<b>Open SP3 lane 4 at 16:30 today</b> (2 officers from SP4). <b>Move the CT-SP3-03 generator swap to Saturday night</b> 22:00 to 04:00, when SP3 needs only 1 lane. Both changes are EA compliant.`)}`;
+};
+
+P.workforce = () => {
+  const w = D.workforce;
+  const labels = w.hours.map(h => hh(h.h));
+  const rr = C.bars({ labels, xEvery: 3, yFmt: v => Math.round(v), series: [{ label: 'Required', values: w.hours.map(h => h.required), color: '#0D9488' }, { label: 'Rostered', values: w.hours.map(h => h.rostered), color: '#99F6E4' }] });
+  const ratio = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;align-items:center;height:100%"><div style="height:9rem">${C.ring((1 - (w.ratio_platform - 1) / (w.ratio_industry_high - 1)) * 100, '#0D9488', w.ratio_platform, 'vs 1.0 ideal')}</div><div class="rows"><div class="row"><div class="m">Industry benchmark<small>rostered hours per required hour</small></div><div class="s num">${w.ratio_industry_low} to ${w.ratio_industry_high}</div></div><div class="row"><div class="m">Before optimisation<small>same airport, 2025</small></div><div class="s num">${w.ratio_before}</div></div><div class="row"><div class="m">Casual share<small>was ${w.casual_share_before_pct}%</small></div><div class="s num">${w.casual_share_pct}%</div></div></div></div>`;
+  const rank = `<table><tr><th>#</th><th>Position and window</th><th>Why it is safe to leave</th><th class="r" style="width:9rem">Impact score</th></tr>${w.uncover_ranking.slice(0, 4).map(r => `<tr><td><b>${r.rank}</b></td><td><b>${r.position}</b><br><small style="color:var(--muted)">${r.window}</small></td><td style="font-size:.82rem">${r.reason}</td><td class="r"><span class="health"><span class="bar"><i style="width:${r.impact_score}%;background:${r.impact_score < 20 ? 'var(--good)' : r.impact_score < 50 ? 'var(--watch)' : 'var(--bad)'}"></i></span><b class="num">${r.impact_score}</b></span></td></tr>`).join('')}</table>`;
+  const fc = C.bars({ labels: wfForecast.map(d => d.dow + ' ' + d.date.slice(8)), hline: { y: wfForecast[0].capacity, label: 'Today\'s rostered hours', color: '#0D9488', pos: 'left' }, yFmt: v => Math.round(v), series: [{ values: wfForecast.map(d => d.required), color: '#0D9488', colors: wfForecast.map(d => d.required > wfForecast[0].capacity ? '#DC2626' : '#0D9488'), valueLabels: true }] });
+  const ea = `<div class="rows">${w.ea_checks.map(c => `<div class="row" style="padding:.4rem .7rem"><span class="tag good">pass</span><div class="m" style="font-size:.84rem">${c.rule}</div></div>`).join('')}</div>`;
+  return `<div class="grid" style="grid-template-columns:2fr 1fr">
+    ${card({ title: 'Officers required vs rostered, by hour today', tag: 'Live', tagClass: 'live', sub: 'Required is derived from lanes needed per hour plus fixed posts; rostered is the optimised EA-compliant roster', body: rr + `<div class="legend"><span><i style="background:#0D9488"></i>Required</span><span><i style="background:#99F6E4"></i>Rostered</span></div>`, ai: `Rostered hours track required at <b>${w.ratio_platform}:1</b> across the day. The gap that remains is shift shape, not over-rostering: 9.5 hour shifts cannot follow a 2 hour peak exactly. The only hour under-covered is <b>17:00 at SP3</b> (see Security).` })}
+    ${card({ title: 'Roster efficiency', tag: 'Live', tagClass: 'live', sub: 'Optimised against the EA, Fair Work and the 10 min wait KPI', body: ratio, ai: `Moving from ${w.ratio_before} to ${w.ratio_platform} released about <b>${fmt(w.annual_officer_hours_saved)} officer hours a year</b>, with casuals down to ${w.casual_share_pct}% and most staff on 8 shifts a fortnight.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1.5fr 1fr 1fr">
+    ${card({ title: 'If I have to leave one position uncovered, which one?', tag: 'Predictive', sub: 'Ranked by modelled impact on wait KPI, security coverage and incident exposure, next 24 hours', body: rank, ai: `Positions 1 to 3 can be left open with <b>no passenger-facing effect</b>. Never take from an SP1 morning lane: position 7 would breach KPI for 1,340 passengers.` })}
+    ${card({ title: 'Officer hours needed, next 7 days', tag: 'Forecast', sub: 'From the passenger forecast; red exceeds today\'s rostered hours', body: fc, ai: `Friday needs <b>${fmt(wfForecast.find(d => d.dow === 'Fri').required)}</b> officer hours, +${pctDiff(wfForecast.find(d => d.dow === 'Fri').required, reqTotal).toFixed(0)}% on today. The re-run roster covers it with <b>14 extra part-time shifts</b> and no additional casuals or overtime.` })}
+    ${card({ title: 'EA and Fair Work compliance', tag: 'Live', tagClass: 'live', sub: 'Every published roster is checked before release', body: ea, ai: `Six of six rules pass for the current fortnight and for the Friday re-run. Penalty allocation is within 3% across the team.` })}
+  </div>
+  ${band(`<b>${w.on_shift_now}</b> officers on shift against ${w.required_now} required. Ratio ${w.ratio_platform} vs industry 1.5 to 1.6.`, `Long weekend adds ${fmt(wfForecast.find(d => d.dow === 'Fri').required - reqTotal)} officer hours on Friday and ${fmt(wfForecast.find(d => d.dow === 'Sun').required - reqTotal)} on Sunday. Re-run roster is ready for release.`, `<b>Release the Friday to Sunday roster today</b> so part-timers get 48 hours notice. Move 2 SP4 officers to SP3 at 16:20 today. Leave position 1 (SP4 second officer, 13:00 to 15:00) uncovered tomorrow if a sick call comes in.`)}`;
+};
+
+P.assets = () => {
+  const tbl = `<table><tr><th>Asset</th><th>Location</th><th>Health</th><th>Signal</th><th>Predicted failure</th><th class="r">Parts lead</th><th class="r">Downtime / day</th><th>Act by</th></tr>${[...D.assets].sort((a, b) => a.health - b.health).slice(0, 6).map(a => `<tr><td><b>${a.id}</b><br><small style="color:var(--muted)">${a.type}</small></td><td style="font-size:.8rem">${a.location}</td><td><span class="health"><span class="bar"><i style="width:${a.health}%;background:${healthCol(a.health)}"></i></span><b class="num">${a.health}</b></span></td><td style="font-size:.78rem;max-width:15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${a.signal}">${a.signal}</td><td><span class="tag ${a.health < 50 ? 'bad' : a.health < 70 ? 'watch' : 'good'}">${a.failure_window}</span></td><td class="r num">${a.parts_lead_days} d</td><td class="r num">${AUD(a.downtime_cost_day)}</td><td style="font-size:.8rem">${a.action_by ? a.action_by.slice(5).split('-').reverse().join('/') : ''}</td></tr>`).join('')}</table><div class="sub" style="margin-top:.4rem">Showing the 6 lowest health scores of ${D.assets_summary.total_monitored} monitored assets.</div>`;
+  const labels = [...Array(30).keys()].map(i => 'D-' + (29 - i)).concat([...Array(16).keys()].map(i => 'D+' + i));
+  const ct = C.line({ labels, xEvery: 5, splitIdx: 29, ymin: 0.84, ymax: 1.0, yFmt: v => v.toFixed(2), hline: { y: 0.88, label: 'Regulatory limit 0.88', pos: 'left' }, series: [{ values: ctTrend.concat(Array(16).fill(null)), color: '#D97706', width: 2.5 }, { values: Array(29).fill(null).concat(ctProj), color: '#D97706', dash: true, band: [Array(29).fill(null).concat(ctProj.map((v, i) => v - 0.004 - i * 0.0012)), Array(29).fill(null).concat(ctProj.map((v, i) => v + 0.004 + i * 0.0012))] }], marks: [{ i: 29 + 11, v: ctProj[11], label: 'Fails 4 to 11 Oct' }] });
+  const esc2 = D.assets.find(a => a.id === 'ESC-T1-02');
+  const rvr = C.hbars({ lw: '14rem', items: [{ label: 'Repair now', sub: 'step chain, 2 more failures expected', value: 96000, color: '#F59E0B' }, { label: 'Replace (planned, ordered now)', sub: '4 month lead, install Feb', value: 310000, color: '#0D9488' }, { label: 'Wait for failure', sub: `${esc2.parts_lead_days} days down at ${AUD(esc2.downtime_cost_day)}/day + replace`, value: 310000 + esc2.parts_lead_days * esc2.downtime_cost_day, color: '#DC2626' }] });
+  const s = D.assets_summary;
+  const summ = `<div class="kpis" style="grid-template-columns:1fr 1fr;gap:.7rem">${kpi('Monitored assets', s.total_monitored, '', 'CT, X-ray, vertical transport, BHS, HVAC, lighting', '')}${kpi('Failures predicted, 30 days', s.predicted_failures_30d, '', `<span class="down">${s.critical} critical</span>`, '')}${kpi('At risk (health < 70)', s.at_risk, '', 'of 12 shown here', '')}${kpi('Downtime cost avoided, 90 days', AUD(s.avoided_downtime_cost_90d), '', '<span class="up">7 interventions before failure</span>', '')}</div>`;
+  return `<div class="grid" style="grid-template-columns:2fr 1fr">
+    ${card({ title: 'Asset health and predicted failure', tag: 'Predictive', sub: 'Health from telemetry, fault logs and age; failure window from degradation trend against limits', body: tbl, ai: `Two assets need a decision this week. <b>BHS-T1-B2</b> bearings (AUD 4.8k now vs AUD 22k per day unplanned) and <b>CT-SP3-03</b> (order the generator today; 42 day lead time lands it just inside the failure window). <b>ESC-T1-02</b> should be replaced, not repaired; parts are discontinued.` })}
+    ${card({ title: 'Portfolio', tag: 'Live', tagClass: 'live', sub: 'What the model is watching', body: summ, ai: `Over 90 days the platform flagged 7 assets before they failed, avoiding about <b>${AUD(s.avoided_downtime_cost_90d)}</b> in downtime and emergency call-outs.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1.4fr 1fr">
+    ${card({ title: 'CT-SP3-03 image quality index, 30 days and projection', tag: 'Forecast', sub: 'Regulatory limit 0.88; below it the lane must close. Projection from generator tube current drift', body: ct, ai: `The index crosses <b>0.88 between 4 and 11 October</b>. Generator lead time is 42 days, so ordering today lands parts 4 November: <b>too late</b> for an unplanned failure. Recommendation: order now and swap in the Saturday night window using the spare from XR-SP1-02 stock if the index hits 0.885 first.` })}
+    ${card({ title: 'Replace or repair: ESC-T1-02', tag: 'Predictive', sub: 'Total cost over 12 months, AUD', body: rvr, ai: `Repair looks cheapest but the step chain is at 82% wear with parts discontinued, so a second failure inside 6 months is likely (68%). An unplanned failure means <b>4 months without the north escalator in the December peak</b>. Replace, and order this week.` })}
+  </div>
+  ${band(`${s.at_risk} assets below health 70, ${s.critical} critical. No lane or belt currently down.`, `4 failures predicted in 30 days. The CT-SP3-03 window opens 4 Oct. Long-weekend load brings BHS-T1-B2 bearing risk forward.`, `<b>Order the CT generator (AUD 68k) and the escalator replacement today.</b> Replace BHS-T1-B2 bearings Thursday night. Replace CART-06 battery Friday. Bundle the T2 light globes into one EWP hire in the week of 12 October.`)}`;
+};
+
+P.facilities = () => {
+  const f = D.facilities;
+  const tbl = `<table><tr><th>Restroom</th><th class="r">Uses today</th><th class="r">Cleans due / verified</th><th>Compliance</th><th>Last verified</th><th>Next due</th></tr>${[...f.restrooms].sort((a, b) => a.compliance_pct - b.compliance_pct).slice(0, 6).map(r => `<tr><td><b>${r.name}</b><br><small style="color:var(--muted)">${r.id}, ${r.terminal}</small></td><td class="r num">${fmt(r.uses_today)}</td><td class="r num">${r.cleans_required} / ${r.cleans_verified}</td><td><span class="health"><span class="bar"><i style="width:${r.compliance_pct}%;background:${healthCol(r.compliance_pct)}"></i></span><b class="num">${r.compliance_pct}%</b></span></td><td class="num">${r.last_clean}</td><td>${r.next_due === 'Now' ? '<span class="tag bad">Now</span>' : r.next_due}</td></tr>`).join('')}</table><div class="sub" style="margin-top:.4rem">6 of 12 restrooms shown; the other 6 are at 100%.</div>`;
+  const ringHtml = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:center;height:100%"><div style="height:8.5rem">${C.ring(f.compliance_pct, '#16A34A', f.compliance_pct + '%', 'verified')}</div><div class="rows"><div class="row"><div class="m">RFID tagged equipment<small>mops, trolleys, carts</small></div><div class="s num">${f.rfid_tagged_equipment}</div></div><div class="row"><div class="m">Verified cleans today<small>touch point scans</small></div><div class="s num">${f.verified_cleans_today}</div></div><div class="row"><div class="m">Behind schedule<small>restrooms</small></div><div class="s num" style="color:var(--bad)">${rrBehind.length}</div></div></div></div>`;
+  const cf = C.bars({ labels: f.cleaning_forecast.map(d => d.dow + ' ' + d.date.slice(8)), hline: { y: f.cleaning_forecast[0].capacity, label: 'Crew capacity ' + f.cleaning_forecast[0].capacity, color: '#16A34A' }, yFmt: v => Math.round(v), series: [{ values: f.cleaning_forecast.map(d => d.required), color: '#16A34A', colors: f.cleaning_forecast.map(d => d.required > d.capacity ? '#DC2626' : '#16A34A'), valueLabels: true }] });
+  const L = f.lighting;
+  const light = C.hbars({ lw: '13rem', items: [{ label: '6 separate call-outs', sub: 'as failures occur, EWP each time', value: 11100, color: '#DC2626' }, { label: 'One bundled visit', sub: `${L.failed} failed + ${L.predicted_fail_30d} predicted, 2 day EWP hire`, value: 3700, color: '#16A34A' }] });
+  return `<div class="grid" style="grid-template-columns:2fr 1fr">
+    ${card({ title: 'Restroom cleaning: usage-driven schedule vs verified cleans', tag: 'Live', tagClass: 'live', sub: 'Usage from door counters; a clean is verified only when tagged equipment scans the restroom touch point', body: tbl, ai: `<b>RR-07 T2 pier A</b> is 2 verified cleans behind after ${fmt(f.restrooms[6].uses_today)} uses; the paper log shows it done. RR-03 and RR-08 are one behind. Everything else is on schedule. The gap is concentrated on the 12:00 to 14:00 crew handover.` })}
+    ${card({ title: 'Verified compliance', tag: 'Live', tagClass: 'live', sub: 'Scans, not signatures', body: ringHtml, ai: `Compliance is measured from equipment scans, so it cannot be back-filled. Verified rate rose from 71% to ${f.compliance_pct}% in the 8 weeks since tagging went live.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+    ${card({ title: 'Cleans required, next 7 days', tag: 'Forecast', sub: 'From the passenger forecast and usage per passenger by zone', body: cf, ai: `Friday and Sunday exceed crew capacity of ${f.cleaning_forecast[0].capacity} cleans. Adding <b>one 6 hour shift</b> on each day covers it; alternatively drop the T1 landside frequency, which runs 30% under its usage trigger.` })}
+    ${card({ title: 'T2 high-bay lighting: cost of two approaches', tag: 'Predictive', sub: `${L.fittings} fittings, ${L.failed} failed now, ${L.predicted_fail_30d} predicted to fail by mid October`, body: light, ai: `Bundling saves <b>${AUD(L.saving)}</b> this round. The model predicts fittings from the 2021 batch failing in clusters, so one visit every 10 weeks beats reacting to each failure.` })}
+    ${card({ title: 'External glazing', tag: 'Predictive', sub: `${fmt(f.windows.panels)} panels, last wash ${f.windows.last_wash.split('-').reverse().join('/')}, ${f.windows.complaints_30d} complaints in 30 days`, body: `<div class="rows"><div class="row"><div class="m">Current cycle<small>fixed</small></div><div class="s">8 weeks</div></div><div class="row"><div class="m">Trigger model<small>complaints + rain + dust days</small></div><div class="s">10 to 14 weeks</div></div><div class="row"><div class="m">Modelled saving<small>per year</small></div><div class="s" style="color:var(--good)">AUD 38k</div></div></div>`, ai: `Complaints cluster on the north face after dust events, not on the calendar. ${f.windows.recommendation}` })}
+  </div>
+  ${band(`Verified compliance <b>${f.compliance_pct}%</b>. ${rrBehind.length} restrooms behind, worst RR-07 T2 pier A.`, `Cleaning demand exceeds crew capacity on Friday and Sunday. 31 light fittings predicted to fail; one bundled visit due week of 12 October.`, `<b>Send a crew to RR-07 now.</b> Add one 6 hour cleaning shift Friday and Sunday. Book a single 2 day EWP hire for 12 to 13 October. Switch glazing to trigger-based washing.`)}`;
+};
+
+P.retail = () => {
+  const r = D.retail;
+  const rev = C.hbars({ lw: '12rem', items: r.zones.map(z => ({ label: z.zone.replace(' walk-through', ''), sub: `${fmt(z.footfall)} footfall, ${z.conversion_pct}% convert`, value: z.revenue_today, color: z.revenue_today === 0 ? '#DC2626' : '#DB2777', text: z.revenue_today ? AUD(z.revenue_today) : 'no offer' })) });
+  const fc = C.bars({ labels: r.forecast_next7.map(d => d.dow + ' ' + d.date.slice(8)), yFmt: v => C.k(v), series: [{ values: r.forecast_next7.map(d => d.revenue), color: '#DB2777', valueLabels: true }] });
+  const dwellConv = `<table><tr><th>Zone</th><th class="r">Dwell</th><th class="r">Conversion</th><th class="r">Spend / pax</th></tr>${r.zones.map(z => `<tr><td>${z.zone}</td><td class="r num">${z.dwell_min} min</td><td class="r num">${z.conversion_pct}%</td><td class="r num">${z.spend_per_pax ? 'AUD ' + z.spend_per_pax.toFixed(2) : '<span class="tag bad">none</span>'}</td></tr>`).join('')}</table>`;
+  const att = C.hbars({ lw: '13rem', max: 100, items: [{ label: 'SP3 exit corridor', sub: '0.9 m/s walking pace', value: 94, color: '#16A34A', text: '94% pass' }, { label: 'T1 airside food entrance', sub: '1.0 m/s', value: 71, color: '#DB2777', text: '71% pass' }, { label: 'T2 entrance (current ads)', sub: '1.4 m/s, hurried', value: 58, color: '#F59E0B', text: '58% pass' }, { label: 'Gate 21 lounge', sub: 'seated, 31 min dwell', value: 22, color: '#94A3B8', text: '22% pass' }] });
+  return `<div class="grid" style="grid-template-columns:1.3fr 1fr 1fr">
+    ${card({ title: 'Revenue by zone today', tag: 'Live', tagClass: 'live', sub: 'Footfall from counters, transactions from tenant POS feeds', body: rev, ai: `<b>${AUD(r.revenue_today)}</b> today, <b>AUD ${r.revenue_per_pax.toFixed(2)}</b> per departing passenger. ${r.insight_pier_a}` })}
+    ${card({ title: 'Dwell and conversion by zone', tag: 'Live', tagClass: 'live', sub: 'Longer dwell converts, if there is something to buy', body: dwellConv, ai: `Pier B food court converts <b>44%</b> at 24 min dwell. Pier A has the longest dwell in the airport (31 min) and zero conversion because there is no outlet.` })}
+    ${card({ title: 'Revenue forecast, next 7 days', tag: 'Forecast', sub: 'From the passenger forecast at current spend per passenger', body: fc, ai: `Friday forecast <b>${AUD(r.forecast_next7[1].revenue)}</b>. Tenants have been sent the hourly footfall forecast so they can staff the 16:00 to 19:00 bank.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1fr 1fr">
+    ${card({ title: 'Where passengers actually look', tag: 'Predictive', sub: 'Share of T2 passengers passing each point, and their walking speed (attention proxy)', body: att, ai: r.ad_placement + ' Moving the primary panel to the SP3 exit corridor is modelled at <b>+62% impressions</b> at the same rate card.' })}
+    ${card({ title: 'Opportunities ranked by value', tag: 'Predictive', sub: 'Annualised, from today\'s footfall and the T2 average spend', body: C.hbars({ lw: '13rem', items: [{ label: 'Pop-up cafe, gate 21 pier A', sub: 'recovers 45% of unserved demand', value: 2800000, color: '#DB2777', text: 'AUD 2.8M' }, { label: 'Ad panel to SP3 exit corridor', sub: '+62% impressions', value: 410000, color: '#DB2777', text: 'AUD 410k' }, { label: 'Pier B food court to 21:00', sub: 'late international bank', value: 360000, color: '#DB2777', text: 'AUD 360k' }, { label: 'T1 cafe mobile order pickup', sub: 'lift 21% conversion to 28%', value: 290000, color: '#DB2777', text: 'AUD 290k' }] }), ai: `The pier A gap alone is worth more than the other three combined. It needs no capital from the airport: three tenants have asked for pier space in the last year.` })}
+  </div>
+  ${band(`<b>${AUD(r.revenue_today)}</b> today, AUD ${r.revenue_per_pax.toFixed(2)} per passenger. Pier A is the only zone with dwell and no offer.`, `Long weekend lifts revenue to <b>${AUD(r.forecast_next7[1].revenue)}</b> Friday. Evening bank at 17:00 is the busiest retail hour of the week.`, `<b>Offer gate 21 to a pop-up tenant for the school holidays</b> as a live test of the AUD 2.8M case. Move the primary advertising panel to the SP3 exit corridor at the next contract break.`)}`;
+};
+
+P.disruption = () => {
+  const d = D.disruption;
+  const sev = { high: '#DC2626', medium: '#F59E0B', low: '#3B82F6' };
+  const fl = `<table><tr><th>Flight</th><th>From</th><th class="r">Sched</th><th class="r">Est</th><th>Status</th><th>Gate</th><th class="r">Pax</th></tr>${D.flights.map(f => `<tr style="${f.flt === 'MA 412' ? 'background:#FEF2F2' : ''}"><td><b>${f.flt}</b></td><td>${f.from}</td><td class="r num">${f.sched}</td><td class="r num">${f.est}</td><td><span class="tag ${f.status.startsWith('On') ? 'good' : 'bad'}">${f.status}</span></td><td>${f.gate}</td><td class="r num">${f.pax}${f.transfer ? `<br><small style="color:var(--muted)">${f.transfer} transfer</small>` : ''}</td></tr>`).join('')}</table>`;
+  const casc = `<div class="casc">${d.cascade.map(c => `<div class="cs" style="--sc:${sev[c.severity]}"><div class="st">${c.step}</div><div class="ar">${c.area}<br><span class="tag ${c.severity === 'high' ? 'bad' : c.severity === 'medium' ? 'watch' : 'info'}">${c.severity}</span></div><div>${c.effect}</div><div class="ac"><b>Do:</b> ${c.action}</div></div>`).join('')}</div>`;
+  const metric = (l, a, b, unit) => `<div style="background:#fff;border:1px solid var(--line);border-radius:.6rem;padding:.6rem .8rem"><div style="font-size:.74rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em">${l}</div><div style="display:flex;align-items:baseline;gap:.6rem;margin-top:.25rem"><span class="num" style="font-size:1.5rem;font-weight:700;color:var(--bad)">${a}</span><span style="color:var(--muted)">&rarr;</span><span class="num" style="font-size:1.5rem;font-weight:700;color:var(--good)">${b}</span><span style="font-size:.78rem;color:var(--muted)">${unit}</span></div></div>`;
+  const cmp = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;height:100%"><div style="background:#FEF2F2;border-radius:.7rem;padding:.9rem"><div class="tag bad">If ignored</div><p style="margin-top:.5rem;font-size:.92rem;line-height:1.45">${d.if_ignored}</p></div><div style="background:#ECFDF5;border-radius:.7rem;padding:.9rem"><div class="tag good">If actioned by 15:00</div><p style="margin-top:.5rem;font-size:.92rem;line-height:1.45">${d.if_actioned}</p></div>
+    <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem">${metric('SP3 wait p95, 17:00', '13.8', '9.1', 'min')}${metric('Passengers over KPI', '620', '0', '')}${metric('Missed connections', '2', '0', '')}${metric('Net cost of actions', 'AUD 0', 'AUD 140', 'plus AUD 2.4k revenue')}</div></div>`;
+  return `<div class="grid" style="grid-template-columns:1fr 1.6fr">
+    ${card({ title: 'Trigger: ' + d.trigger, tag: 'Live', tagClass: 'live', sub: 'Inbound arrivals 15:00 to 17:00, from the AODB feed', body: fl, ai: `The delay itself is minor. What matters is <b>where it lands</b>: 64 transfer passengers into the 17:00 SP3 peak and a gate already promised to PV 55. The platform re-plans the next 3 hours rather than the flight.` })}
+    ${card({ title: 'Predicted cascade and recommended actions', tag: 'Predictive', sub: 'Each step is simulated against today\'s roster, gate plan, cleaning schedule and retail staffing', body: casc, ai: `Five actions, all inside existing staff and gates. Total cost <b>AUD 140</b>. Nothing here needs approval above duty manager level; the platform can send the four notifications now.` })}
+  </div>
+  <div class="grid" style="grid-template-columns:1fr">
+    ${card({ title: 'Outcome comparison', tag: 'Forecast', sub: 'Modelled for 16:00 to 18:00 today', body: cmp })}
+  </div>
+  ${band(`One active disruption. MA 412 estimated 16:15, 186 passengers, 64 transferring.`, `Long weekend raises cascade sensitivity: on Friday the same 55 min delay would breach KPI at SP3 for 2 hours instead of 1.`, `<b>Approve the five actions before 15:00.</b> The gate move and lane opening are the two that carry the KPI; the other three are cleaning, staff and retail housekeeping.`)}`;
+};
+
+/* ---------- router ---------- */
+let current = 'home';
+function go(id) { location.hash = '#/' + id; }
+function render() {
+  const id = (location.hash.replace('#/', '') || 'home');
+  const m = MODULES.find(x => x.id === id) || MODULES[0];
+  current = m.id;
+  document.documentElement.style.setProperty('--accent', m.color);
+  document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.id === m.id));
+  $('#title').textContent = m.name;
+  $('#crumb').textContent = m.id === 'home' ? 'All modules' : 'Overview / ' + m.name;
+  const page = $('#page');
+  const ROWS = { passenger: '1fr 1.3fr auto', security: '1.15fr 1fr auto', workforce: '1fr 1.35fr auto', assets: '1.1fr 1fr auto', facilities: '1.25fr 1fr auto', retail: '1.25fr 1fr auto', disruption: '1.6fr 1fr auto' };
+  page.innerHTML = m.id === 'ask' ? ASK.page() : m.id === 'home' ? P.home() : `<div class="mod" style="grid-template-rows:${ROWS[m.id]}">` + P[m.id]() + '</div>';
+  page.className = 'page ' + m.id;
+  page.scrollTop = 0;
+  C.mount(page);
+  if (m.id === 'ask') ASK.mount();
+}
+function buildNav() {
+  $('#nav').innerHTML = MODULES.filter(m => m.id !== 'ask').map(m => `<button data-id="${m.id}" onclick="go('${m.id}')"><span class="dot" style="--dc:${m.color}"></span>${m.name}<span class="k">${m.key}</span></button>`).join('');
+}
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') { if (e.key === 'Escape') { e.target.blur(); CFG.close(); } return; }
+  if ($('#cfg').classList.contains('on')) { if (e.key === 'Escape') CFG.close(); return; }
+  const order = MODULES.map(m => m.id); const i = order.indexOf(current);
+  if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { go(order[(i + 1) % order.length]); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { go(order[(i - 1 + order.length) % order.length]); e.preventDefault(); }
+  else if (/^[1-7]$/.test(e.key)) go(order[+e.key]);
+  else if (e.key.toLowerCase() === 'h') go('home');
+  else if (e.key.toLowerCase() === 'a') go('ask');
+  else if (e.key === '?') $('#help').classList.toggle('on');
+  else if (e.key === 'Escape') { $('#help').classList.remove('on'); CFG.close(); ALERTS.close(); }
+});
+window.addEventListener('hashchange', render);
+const ALERTS = (() => {
+  const panel = () => $('#alertpanel');
+  function build() {
+    panel().innerHTML = `<div class="ph"><b>Alerts</b><span>${D.alerts.length} open, ${D.airport.today_label.split(' ').slice(0, 2).join(' ')} ${D.airport.now}</span></div>` +
+      D.alerts.map(a => `<button class="alert ${a.level}" onclick="ALERTS.close();go('${a.module}')"><span class="lv">${a.level}</span><span>${esc(a.text)}</span><span class="go">Open ${MODULES.find(m => m.id === a.module).name.split(' ')[0]} &rarr;</span></button>`).join('');
+    $('#bellcount').textContent = D.alerts.length;
+  }
+  function toggle(e) { if (e) e.stopPropagation(); panel().classList.toggle('on'); }
+  function close() { panel().classList.remove('on'); }
+  document.addEventListener('click', e => { if (!e.target.closest('.bellwrap')) close(); });
+  return { build, toggle, close };
+})();
+function setConn() { $('#connlabel').textContent = CFG.current().label; $('#connmeta').textContent = `${D.airport.data_sources} sources, ${D.airport.training_months} months`; }
+function init() { buildNav(); ALERTS.build(); setConn(); render(); }
+</script>
+<script>/* Ask the Airport: scripted expert answers with intent matching, all numbers read from the same dataset as the screens */
+const ASK = (() => {
+  const SOURCES = ['Flight schedule (AODB)', 'Passenger counts', 'Screening lane telemetry', 'Roster and EA rules', 'CT and X-ray telemetry', 'Asset fault logs', 'Work orders', 'RFID cleaning scans', 'Door counters', 'Tenant POS', 'Wi-Fi and camera counts', 'Car park systems', 'Weather', 'Complaints'];
+  const sp3h = h => sp3.hours[h];
+  const friWf = wfForecast.find(d => d.dow === 'Fri'), sunWf = wfForecast.find(d => d.dow === 'Sun');
+  const sun = next7.find(d => d.dow === 'Sun'), thu = next7.find(d => d.dow === 'Thu');
+  const fc = D.facilities, w = D.workforce, r = D.retail, sc = D.scenario, dz = D.disruption;
+  const ct = D.assets.find(a => a.id === 'CT-SP3-03'), escA = D.assets.find(a => a.id === 'ESC-T1-02'), bhs = D.assets.find(a => a.id === 'BHS-T1-B2'), cart = D.assets.find(a => a.id === 'CART-06');
+  const ev = (t, s) => ({ t, s });
+  const dayLabel = d => d.dow + ' ' + d.date.slice(8) + '/' + d.date.slice(5, 7);
+
+  const BANK = [
+    { id: 'attention', q: 'What needs my attention today?', keys: [['attention', 'priorit', 'today', 'this morning', 'focus', 'worry', 'urgent', 'brief', 'summary', 'summar', 'what should i', 'top issues', 'headline']], need: 1, sources: ['Roster and EA rules', 'Screening lane telemetry', 'CT and X-ray telemetry', 'RFID cleaning scans', 'Flight schedule (AODB)'],
+      a: () => ({ direct: `Three things, in order. <b>SP3 will breach the wait KPI at 17:00 and 18:00</b> unless lane 4 opens by 16:30. <b>CT-SP3-03 needs its generator ordered today</b> to beat the 4 to 11 October failure window. <b>MA 412 is 55 minutes late</b> and creates a gate 24 conflict at 16:40. Everything else is on plan.`,
+        evidence: [ev(`SP3 17:00: ${fmt(sp3h(17).pax)} passengers, 3 lanes open, ${sp3h(17).lanes_required} needed, predicted p95 wait ${sp3h(17).wait_p95} min`, 'Screening lane telemetry'), ev(`CT-SP3-03 image quality index 0.91, limit 0.88, drift 0.0025 per day; parts lead ${ct.parts_lead_days} days`, 'CT and X-ray telemetry'), ev(`MA 412 estimated 16:15, gate 24; PV 55 due gate 24 at 16:40`, 'Flight schedule (AODB)'), ev(`Cleaning compliance ${fc.compliance_pct}%, ${rrBehind.length} restrooms behind; roster ${w.on_shift_now} on shift vs ${w.required_now} required`, 'RFID cleaning scans')],
+        action: `Approve the five MA 412 actions before 15:00 (they include the SP3 lane opening). Raise the generator purchase order this afternoon. Send a crew to RR-07 now.`, follow: ['kpi_today', 'ct', 'disruption'] }) },
+
+    { id: 'pax_week', q: 'How many passengers are we expecting this week?', keys: [['passenger', 'pax', 'people', 'travellers', 'volume', 'busy'], ['week', 'next 7', 'coming days', 'weekend', 'expect', 'forecast', 'tomorrow', 'friday', 'sunday', 'thursday']], need: 2, sources: ['Flight schedule (AODB)', 'Passenger counts', 'Car park systems'],
+      a: () => ({ direct: `About <b>${fmt(D.avg_next7)} departing passengers a day</b> over the next 7 days, <b>${pctDiff(D.avg_next7, D.avg_last7).toFixed(0)}% above</b> the last 7. The long weekend and school holidays start Friday: <b>${fmt(fri.total)}</b> on Friday and <b>${fmt(sun.total)}</b> on Sunday are the peaks. Saturday dips to ${fmt(next7.find(d => d.dow === 'Sat').total)}.`,
+        evidence: [ev(`Scheduled seats next 7 days up 11% on the prior week; load factors 86 to 91% from booking feeds`, 'Flight schedule (AODB)'), ev(`Last 7 days actual average ${fmt(D.avg_last7)} a day, today ${fmt(today.total)}`, 'Passenger counts'), ev(`Same long weekend in 2025 ran 15% above baseline; the model is using 16% for Friday given holiday overlap`, 'Passenger counts'), ev(`Long-stay car park pre-bookings for Friday are 2.1x a normal Friday`, 'Car park systems')],
+        chart: C.line({ labels: daysAll.map(dayLabel), splitIdx: 7, series: [{ values: daysAll.map(d => d.total), color: '#2563EB', dots: true, band: [daysAll.map(d => d.offset > 0 ? Math.round(d.total * (1 - 0.05 - 0.012 * d.offset)) : null), daysAll.map(d => d.offset > 0 ? Math.round(d.total * (1 + 0.05 + 0.012 * d.offset)) : null)] }] }),
+        action: `Nothing extra for passengers themselves. The uplift is already in the roster, cleaning and retail forecasts; Friday needs ${fmt(friWf.required - reqTotal)} more officer hours and one extra cleaning shift.`, conf: 'Confidence high to day 3, moderate after (band +/-13% by day 7)', follow: ['busiest_hour', 'staff_weekend', 'cleaning_capacity'] }) },
+
+    { id: 'busiest_hour', q: 'When is the busiest hour on Friday?', keys: [['busiest', 'peak', 'busy hour', 'which hour', 'what time', 'when'], ['friday', 'fri', 'weekend', 'tomorrow', 'thursday']], need: 2, sources: ['Flight schedule (AODB)', 'Passenger counts'],
+      a: () => { const mh = fri.hours.reduce((a, b) => b.pax > a.pax ? b : a); const s3 = sc.impact_hours.filter(x => x.dow === 'Fri'); return ({ direct: `<b>${hh(mh.h)} on Friday</b>, with about <b>${fmt(mh.pax)} departing passengers</b> reaching screening in that hour. The evening bank at 17:00 is smaller overall (${fmt(fri.hours[17].pax)}) but it is the tighter one for T2 International: <b>${fmt(s3.find(x => x.h === 17).pax)}</b> international passengers in one hour need all 4 SP3 lanes.`,
+        evidence: [ev(`Friday 06:00: 14 departures scheduled 06:30 to 08:00, 2,410 seats, load factor 89%`, 'Flight schedule (AODB)'), ev(`58% of passengers arrive at screening 45 to 90 min before departure, which puts the 07:00 to 08:00 departures into the 06:00 screening hour`, 'Passenger counts'), ev(`Friday 17:00 international: 5 wide-body departures 18:30 to 20:10`, 'Flight schedule (AODB)')],
+        chart: C.line({ labels: fri.hours.map(h => hh(h.h)), xEvery: 3, series: [{ values: fri.hours.map(h => h.pax), color: '#2563EB', area: true, band: [fri.hours.map(h => h.lo), fri.hours.map(h => h.hi)] }], marks: [{ i: mh.h, v: mh.pax, label: fmt(mh.pax) }] }),
+        action: `Open all SP1 and SP2 lanes from 05:15 and all 4 SP3 lanes 05:30 to 08:00 and 16:00 to 19:30. That is what the re-run Friday roster does.`, follow: ['kpi_friday', 'lanes_fri', 'staff_weekend'] }); } },
+
+    { id: 'kpi_today', q: 'Will we breach the wait time KPI today?', keys: [['kpi', 'wait', 'queue', 'breach', 'service level', 'waiting time'], ['today', 'tonight', 'this afternoon', 'now', 'this evening']], need: 2, sources: ['Screening lane telemetry', 'Roster and EA rules', 'Flight schedule (AODB)'],
+      a: () => ({ direct: `<b>Yes, at SP3 T2 International, unless you act.</b> Predicted 95th percentile wait is <b>${sp3h(17).wait_p95} min at 17:00 and ${sp3h(18).wait_p95} min at 18:00</b> against the 10 minute KPI, affecting about ${fmt(paxAffectedToday)} passengers. SP1, SP2 and SP4 hold KPI all day.`,
+        evidence: [ev(`17:00 SP3 demand ${fmt(sp3h(17).pax)} passengers; 18:00 ${fmt(sp3h(18).pax)}. Long-weekend uplift plus 64 MA 412 transfers`, 'Flight schedule (AODB)'), ev(`Roster has 3 lanes open at SP3 from 16:00; ${sp3h(17).lanes_required} required at 17:00. Measured CT lane throughput 190/hour`, 'Screening lane telemetry'), ev(`Current 14:00 wait across all points ${waitNow.toFixed(1)} min`, 'Screening lane telemetry'), ev(`SP4 Staff & Crew is over-covered 16:00 to 18:00 by 2 officers`, 'Roster and EA rules')],
+        chart: C.line({ labels: today.hours.map(h => hh(h.h)), xEvery: 3, splitIdx: NOW, ymax: 24, yFmt: v => Math.round(v) + ' min', hline: { y: 10, label: 'KPI 10 min', pos: 'left' }, series: [{ values: sp3.hours.map(h => h.wait_p95), color: '#7C3AED', width: 3 }, { values: sp3.hours.map((h, i) => i >= 16 && i <= 18 ? +(2 + 4 * h.pax / (4 * 190)).toFixed(1) : null), color: '#16A34A', dash: true, endLabel: 'with lane 4' }], marks: breachHours.map(h => ({ i: h.h, v: h.wait_p95, label: h.wait_p95 + ' min' })) }),
+        action: `Open SP3 lane 4 from 16:30 to 19:00 by moving 2 officers from SP4. Cost 2.5 officer hours (about AUD 140). Predicted wait drops to under 6 min in both hours. EA compliant, no overtime.`, follow: ['uncover', 'disruption', 'kpi_friday'] }) },
+
+    { id: 'kpi_friday', q: 'Will we hold the wait KPI on Friday?', keys: [['kpi', 'wait', 'queue', 'breach', 'hold'], ['friday', 'fri', 'weekend', 'long weekend']], need: 2, sources: ['Screening lane telemetry', 'Roster and EA rules', 'Flight schedule (AODB)'],
+      a: () => { const f = sc.impact_hours.filter(x => x.dow === 'Fri'); return ({ direct: `<b>Yes with 4 SP3 lanes, no with 3.</b> With all lanes the only marginal hour is Friday 17:00 at ${f.find(x => x.h === 17).wait_with_4} min. If CT-SP3-03 (lane 3) is out for its generator swap, Friday has <b>${f.filter(x => x.wait_with_3 > 10).length} breach hours</b>, worst 17:00 at ${Math.max(...f.map(x => x.wait_with_3))} min. That is why the swap should move to Saturday night.`,
+        evidence: [ev(`Friday international demand: 06:00 ${fmt(f.find(x => x.h === 6).pax)}, 17:00 ${fmt(f.find(x => x.h === 17).pax)}, 18:00 ${fmt(f.find(x => x.h === 18).pax)} passengers`, 'Flight schedule (AODB)'), ev(`4 CT lanes at 190/hour sustain 646 passengers/hour under KPI`, 'Screening lane telemetry'), ev(`Friday roster (re-run) has 4 SP3 lanes staffed 05:00 to 08:30 and 15:30 to 20:00`, 'Roster and EA rules')],
+        chart: C.bars({ labels: f.map(x => hh(x.h)), xEvery: 1, hline: { y: 10, label: 'KPI 10 min', below: true }, ymax: 32, yFmt: v => Math.round(v) + ' min', series: [{ values: f.map(x => x.wait_with_3), color: '#DC2626', valueLabels: true }, { values: f.map(x => x.wait_with_4), color: '#7C3AED', valueLabels: true }] }),
+        action: `Keep all 4 SP3 lanes available Friday. Move the CT-SP3-03 generator swap to Saturday 22:00 to 04:00 when SP3 needs 1 lane. Pre-position a mobile ETD team on the SP3 queue at 16:30 Friday as insurance for the 17:00 hour.`, conf: 'Confidence moderate: Friday demand band +/-7%', follow: ['ct', 'lane_out', 'staff_weekend'] }); } },
+
+    { id: 'lane_out', q: 'What happens if SP3 lane 3 is out on Thursday and Friday?', keys: [['lane', 'sp3', 'international', 'ct'], ['out', 'down', 'closed', 'offline', 'out of service', 'maintenance', 'what if', 'scenario', 'three lanes', '3 lanes']], need: 2, sources: ['Screening lane telemetry', 'Flight schedule (AODB)', 'Roster and EA rules'],
+      a: () => ({ direct: `With 3 lanes, SP3 breaches the 10 minute KPI in <b>${sc.breach_hours} hours</b> across Thursday and Friday and about <b>${fmt(sc.pax_at_risk)} passengers</b> wait longer than 10 minutes. Thursday 17:00 reaches ${sc.impact_hours.find(x => x.dow === 'Thu' && x.h === 17).wait_with_3} min; Friday 17:00 reaches ${Math.max(...sc.impact_hours.map(x => x.wait_with_3))} min. Thursday morning and midday are fine.`,
+        evidence: sc.impact_hours.filter(x => x.wait_with_3 > 10).map(x => ev(`${x.dow} ${hh(x.h)}: ${fmt(x.pax)} pax, ${x.lanes_required} lanes needed, ${x.wait_with_3} min with 3 lanes vs ${x.wait_with_4} with 4`, 'Screening lane telemetry')),
+        chart: C.bars({ labels: sc.impact_hours.map(x => x.dow + ' ' + hh(x.h)), xEvery: 1, hline: { y: 10, label: 'KPI 10 min', below: true }, ymax: 32, yFmt: v => Math.round(v) + ' min', series: [{ values: sc.impact_hours.map(x => x.wait_with_3), color: '#DC2626', valueLabels: true }, { values: sc.impact_hours.map(x => x.wait_with_4), color: '#7C3AED' }] }),
+        action: `Do not take lane 3 out Thursday or Friday. If it must happen, ${sc.mitigation}`, follow: ['kpi_friday', 'ct', 'uncover'] }) },
+
+    { id: 'lanes_fri', q: 'How many lanes do we need at 6am on Friday?', keys: [['lane'], ['need', 'required', 'how many', 'open'], ['6', 'six', 'morning', 'friday', 'am']], need: 2, sources: ['Flight schedule (AODB)', 'Screening lane telemetry'],
+      a: () => { const h = fri.hours[6]; const rows = D.screening.map(s => { const pax = Math.round(h.pax * s.share * (s.hour_mult[6] || 1)); return { s, pax, need: Math.min(s.lanes, Math.max(1, Math.ceil(pax / (s.tph * D.kpi.lane_eff)))) }; }); return ({ direct: `<b>${rows.reduce((a, x) => a + x.need, 0)} of ${D.airport.screening_lanes} lanes</b> at 06:00 Friday: ${rows.map(x => `${x.s.name} ${x.need}`).join(', ')}. Friday 06:00 is the single busiest hour of the week at ${fmt(h.pax)} departing passengers, so this is the one hour where every point runs at full lanes.`,
+        evidence: rows.map(x => ev(`${x.s.name}: ${fmt(x.pax)} passengers, ${x.s.tph} per lane per hour at 85% sustainable utilisation gives ${x.need} lanes`, 'Screening lane telemetry')),
+        action: `Roster already has these lanes staffed from 05:15. The constraint is CT-SP3-03: it must be serviceable on Friday morning.`, follow: ['busiest_hour', 'lane_out', 'staff_weekend'] }); } },
+
+    { id: 'wait_now', q: 'What is the wait at T2 International right now?', keys: [['wait', 'queue', 'how long'], ['now', 'right now', 'current', 'at the moment', 't2', 'international', 'sp3']], need: 2, sources: ['Screening lane telemetry'],
+      a: () => ({ direct: `<b>${sp3h(NOW).wait_p95} minutes</b> at the 95th percentile at SP3 T2 International, with ${sp3h(NOW).lanes_open} lanes open for ${fmt(sp3h(NOW).pax)} passengers this hour. Across all four points the weighted wait is ${waitNow.toFixed(1)} minutes. Everything is inside the 10 minute KPI at 14:00.`,
+        evidence: D.screening.map(s => ev(`${s.name}: ${fmt(s.hours[NOW].pax)} pax, ${s.hours[NOW].lanes_open}/${s.hours[NOW].lanes_required} lanes, ${s.hours[NOW].wait_p95} min`, 'Screening lane telemetry')),
+        action: `No action now. The pressure point is 17:00 at SP3.`, follow: ['kpi_today', 'busiest_hour'] }) },
+
+    { id: 'uncover', q: 'Which position can I leave uncovered with the lowest impact?', keys: [['uncover', 'not cover', 'leave open', 'drop', 'short', 'sick', 'lowest impact', 'least impact', 'which position', 'which post', 'do without', 'one less', 'spare']], need: 1, sources: ['Roster and EA rules', 'Screening lane telemetry', 'Complaints'],
+      a: () => { const u = w.uncover_ranking; return ({ direct: `<b>${u[0].position}, ${u[0].window}</b> (impact score ${u[0].impact_score} of 100). ${u[0].reason}. The next safest are ${u[1].position} (${u[1].window}) and ${u[2].position} (${u[2].window}). Do not take from an SP1 morning lane: that breaches KPI for 1,340 passengers.`,
+        evidence: u.slice(0, 4).map(x => ev(`#${x.rank} ${x.position} (${x.window}): ${x.reason}`, 'Roster and EA rules')).concat([ev(`Impact score blends predicted wait KPI exposure, security coverage overlap and incident rate in the window`, 'Screening lane telemetry')]),
+        chart: C.hbars({ lw: '17rem', max: 100, items: u.map(x => ({ label: x.position, sub: x.window, value: x.impact_score, color: x.impact_score < 20 ? '#16A34A' : x.impact_score < 50 ? '#F59E0B' : '#DC2626', text: x.impact_score })) }),
+        action: `If a sick call comes in for tomorrow, leave position 1 open and do not backfill. If two come in, positions 1 and 2. Beyond that, call the casual list.`, follow: ['staff_now', 'ea', 'kpi_today'] }); } },
+
+    { id: 'ratio', q: 'How does our roster compare to the industry?', keys: [['roster', 'rostering', 'efficien', 'ratio', 'productiv', 'wastage', 'utilis'], ['industry', 'benchmark', 'compare', 'other airports', 'typical', 'normal', 'how good']], need: 2, sources: ['Roster and EA rules', 'Screening lane telemetry'],
+      a: () => ({ direct: `We roster <b>${w.ratio_platform} hours for every hour of operational requirement</b>. Industry runs at <b>${w.ratio_industry_low} to ${w.ratio_industry_high}</b>, and this airport was at ${w.ratio_before} before optimisation. The difference is about <b>${fmt(w.annual_officer_hours_saved)} officer hours a year</b>, achieved with casuals down from ${w.casual_share_before_pct}% to ${w.casual_share_pct}% and no change to KPI performance.`,
+        evidence: [ev(`Today: ${fmt(reqTotal)} required officer hours, ${fmt(rostTotal)} rostered`, 'Roster and EA rules'), ev(`Roster is built from passengers per screening point per hour, arrival profile before departure and measured lane throughput, then optimised to 9.5 hour shifts, 8 per fortnight`, 'Screening lane telemetry'), ev(`All 6 EA rules pass on every published fortnight since March`, 'Roster and EA rules')],
+        chart: C.hbars({ lw: '15rem', max: 1.7, items: [{ label: 'Industry high', value: 1.6, color: '#CBD5E1', text: '1.60' }, { label: 'Industry low', value: 1.5, color: '#CBD5E1', text: '1.50' }, { label: 'This airport, 2025', value: w.ratio_before, color: '#F59E0B', text: String(w.ratio_before) }, { label: 'This airport, now', value: w.ratio_platform, color: '#0D9488', text: String(w.ratio_platform) }] }),
+        action: `The remaining gap to 1.0 is shift shape. Splitting 4 of the 06:00 shifts into 6 hour part-time shifts would take the ratio to about 1.21 but needs EA consultation.`, follow: ['ea', 'uncover', 'staff_weekend'] }) },
+
+    { id: 'ea', q: 'Is the current roster compliant with the EA?', keys: [['ea', 'enterprise agreement', 'fair work', 'complian', 'award', 'legal', 'rules', 'penalt']], need: 1, sources: ['Roster and EA rules'],
+      a: () => ({ direct: `<b>Yes.</b> All ${w.ea_checks.length} rules pass for the current fortnight and for the re-run Friday to Sunday roster: ${w.ea_checks.map(c => c.rule.toLowerCase()).join('; ')}.`,
+        evidence: w.ea_checks.map(c => ev(`${c.rule}: pass`, 'Roster and EA rules')),
+        action: `Nothing to fix. Release the long weekend roster today to give part-timers 48 hours notice.`, follow: ['ratio', 'staff_weekend'] }) },
+
+    { id: 'staff_now', q: 'How many staff are on shift now versus required?', keys: [['staff', 'officer', 'people', 'headcount', 'on shift', 'on duty', 'rostered'], ['now', 'right now', 'today', 'current', 'how many', 'at the moment']], need: 2, sources: ['Roster and EA rules'],
+      a: () => ({ direct: `<b>${w.on_shift_now} officers on shift</b> against <b>${w.required_now} required</b> at 14:00. The surplus of ${w.on_shift_now - w.required_now} is mostly shift overlap at handover and the 2 over-covered positions at SP4. Headcount is ${w.headcount}: ${w.full_time} full time, ${w.part_time} part time, ${w.casual} casual.`,
+        evidence: [ev(`Required now: ${lanesOpenNow} open lanes x 5.5 officers plus 14 fixed posts`, 'Roster and EA rules'), ev(`Casual share ${w.casual_share_pct}%, down from ${w.casual_share_before_pct}%`, 'Roster and EA rules')],
+        chart: C.bars({ labels: w.hours.map(h => hh(h.h)), xEvery: 3, series: [{ values: w.hours.map(h => h.required), color: '#0D9488' }, { values: w.hours.map(h => h.rostered), color: '#99F6E4' }] }),
+        action: `Move 2 SP4 officers to SP3 at 16:20 for the evening bank.`, follow: ['uncover', 'ratio', 'kpi_today'] }) },
+
+    { id: 'staff_weekend', q: 'Do we have enough staff for the long weekend?', keys: [['staff', 'officer', 'roster', 'people', 'cover', 'enough', 'capacity'], ['weekend', 'friday', 'sunday', 'holiday', 'long weekend', 'next week', 'this week']], need: 2, sources: ['Roster and EA rules', 'Flight schedule (AODB)'],
+      a: () => ({ direct: `<b>Yes, with the re-run roster.</b> Friday needs <b>${fmt(friWf.required)} officer hours</b> (+${pctDiff(friWf.required, reqTotal).toFixed(0)}% on today) and Sunday ${fmt(sunWf.required)}. Today's roster provides ${fmt(rostTotal)}. The re-run adds <b>14 part-time shifts</b> on Friday and 10 on Sunday from existing staff, with no casual call-outs and no overtime.`,
+        evidence: [ev(`Friday ${fmt(fri.total)} passengers and Sunday ${fmt(sun.total)} vs today ${fmt(today.total)}`, 'Flight schedule (AODB)'), ev(`Part-time pool has 118 staff averaging 6.2 of 8 available shifts per fortnight; 31 have volunteered for extra shifts`, 'Roster and EA rules'), ev(`Re-run roster ratio ${w.ratio_platform}; all EA rules pass`, 'Roster and EA rules')],
+        chart: C.bars({ labels: wfForecast.map(dayLabel), hline: { y: wfForecast[0].capacity, label: 'Today\'s rostered hours', color: '#0D9488', pos: 'left' }, series: [{ values: wfForecast.map(d => d.required), color: '#0D9488', colors: wfForecast.map(d => d.required > wfForecast[0].capacity ? '#DC2626' : '#0D9488'), valueLabels: true }] }),
+        action: `Release the Friday to Sunday roster today. Keep 4 casuals on standby for Friday 05:00 to 09:00 in case of sick calls.`, follow: ['kpi_friday', 'busiest_hour', 'cleaning_capacity'] }) },
+
+    { id: 'casuals', q: 'How many casuals are we using?', keys: [['casual', 'agency', 'temp', 'contract staff']], need: 1, sources: ['Roster and EA rules'],
+      a: () => ({ direct: `<b>${w.casual} casuals, ${w.casual_share_pct}% of headcount</b>, down from ${w.casual_share_before_pct}% before the roster was optimised. Most of the fortnight is covered by ${w.full_time} full-time and ${w.part_time} part-time officers on 9.5 hour shifts, 8 per fortnight.`,
+        evidence: [ev(`Casual hours this fortnight: 4.1% of total rostered hours`, 'Roster and EA rules'), ev(`Casual usage peaks on Sunday early shifts`, 'Roster and EA rules')],
+        action: `No change. Keep the casual pool at 26 to 30 for sick cover through the holidays.`, follow: ['ratio', 'staff_weekend'] }) },
+
+    { id: 'fail_next', q: 'Which equipment is likely to fail next, and what does it cost?', keys: [['fail', 'break', 'breakdown', 'at risk', 'equipment', 'asset', 'machine', 'maintenance', 'predict'], ['next', 'soon', 'likely', 'which', 'cost', 'first', 'risk']], need: 2, sources: ['CT and X-ray telemetry', 'Asset fault logs', 'Work orders'],
+      a: () => ({ direct: `In order of urgency: <b>${cart.id}</b> (battery, next 2 weeks, minor), <b>${bhs.id}</b> baggage belt bearings (October, <b>${AUD(bhs.downtime_cost_day)} a day</b> if it fails unplanned), <b>${ct.id}</b> CT unit (4 to 11 October, ${AUD(ct.downtime_cost_day)} a day and a closed lane for up to 6 weeks) and <b>${escA.id}</b> escalator (October to November, parts discontinued). Four predicted failures in 30 days; all four are preventable this week for under AUD 80k.`,
+        evidence: atRisk.map(a => ev(`${a.id} ${a.type}, health ${a.health}: ${a.signal}. Window ${a.failure_window}, parts ${a.parts_lead_days} days`, a.id.startsWith('CT') || a.id.startsWith('XR') ? 'CT and X-ray telemetry' : 'Asset fault logs')),
+        chart: C.hbars({ lw: '15rem', items: atRisk.map(a => ({ label: a.id, sub: a.failure_window, value: a.downtime_cost_day, color: healthCol(a.health), text: AUD(a.downtime_cost_day) + '/day' })) }),
+        action: `Raise four work orders today: CT generator (AUD 68k), BHS bearings (AUD 4.8k, Thursday night), cart battery (AUD 3.2k, Friday) and the escalator replacement order.`, follow: ['ct', 'repair_replace', 'saved'] }) },
+
+    { id: 'ct', q: 'Tell me about the CT scanner at SP3 lane 3', keys: [['ct-sp3', 'ct scanner', 'ct unit', 'ct machine', 'generator', 'lane 3', 'sp3-03', 'scanner', 'x-ray']], need: 1, sources: ['CT and X-ray telemetry', 'Work orders', 'Screening lane telemetry'],
+      a: () => ({ direct: `<b>${ct.id}</b> is ${ct.age_yrs} years old with a health score of <b>${ct.health} and falling</b>. ${ct.signal}. On the current trend the image quality index crosses the regulatory limit of 0.88 <b>between 4 and 11 October</b>, at which point the lane must close. A replacement generator has a ${ct.parts_lead_days} day lead time and the unit costs ${AUD(ct.downtime_cost_day)} a day in lost throughput while down.`,
+        evidence: [ev(`Image quality index 0.972 thirty days ago, 0.91 today, drift accelerating to 0.0025 per day`, 'CT and X-ray telemetry'), ev(`Same signature preceded the CT-SP3-02 generator failure in 2024 (failed 9 days after index hit 0.90)`, 'Asset fault logs'), ev(`No open work order; last service 14 July`, 'Work orders'), ev(`SP3 needs all 4 lanes Friday 06:00 and 17:00 and Sunday 17:00`, 'Screening lane telemetry')],
+        chart: C.line({ labels: [...Array(30).keys()].map(i => 'D-' + (29 - i)).concat([...Array(16).keys()].map(i => 'D+' + i)), xEvery: 5, splitIdx: 29, ymin: 0.84, ymax: 1.0, yFmt: v => v.toFixed(2), hline: { y: 0.88, label: 'Limit 0.88' }, series: [{ values: ctTrend.concat(Array(16).fill(null)), color: '#D97706' }, { values: Array(29).fill(null).concat(ctProj), color: '#D97706', dash: true }], marks: [{ i: 40, v: ctProj[11], label: '4 to 11 Oct' }] }),
+        action: `${ct.recommendation} Schedule the swap for Saturday night, not Thursday or Friday.`, conf: 'Confidence high: 3 comparable failures in the fault history', follow: ['lane_out', 'kpi_friday', 'fail_next'] }) },
+
+    { id: 'repair_replace', q: 'Should we repair or replace escalator ESC-T1-02?', keys: [['escalator', 'esc-t1', 'repair', 'replace', 'travelator', 'lift']], need: 1, sources: ['Asset fault logs', 'Work orders', 'Wi-Fi and camera counts'],
+      a: () => ({ direct: `<b>Replace, and order this week.</b> ${escA.id} is ${escA.age_yrs} years old, step chain at 82% wear, 3 unplanned stops in 30 days and the parts are discontinued. Repairing now costs about AUD 96k over 12 months with a 68% chance of another failure inside 6 months. Replacement is AUD 310k with a ${escA.parts_lead_days} day lead time. Waiting for it to fail means <b>4 months without the north escalator in the December peak</b>, about AUD 1.2M in downtime cost plus the replacement anyway.`,
+        evidence: [ev(`${escA.signal}`, 'Asset fault logs'), ev(`Each unplanned stop diverts 2,100 passengers a day to the lifts; queue time at the lifts doubles`, 'Wi-Fi and camera counts'), ev(`Vendor quote for step chain (grey-market) AUD 42k, 8 week lead`, 'Work orders')],
+        chart: C.hbars({ lw: '15rem', items: [{ label: 'Repair now', sub: '12 month cost', value: 96000, color: '#F59E0B', text: 'AUD 96k' }, { label: 'Replace, planned', value: 310000, color: '#0D9488', text: 'AUD 310k' }, { label: 'Wait for failure', sub: 'downtime + replace', value: 310000 + escA.parts_lead_days * escA.downtime_cost_day, color: '#DC2626', text: AUD(310000 + escA.parts_lead_days * escA.downtime_cost_day) }] }),
+        action: `Approve the replacement order this week for a February install. Keep it running with fortnightly inspections until then.`, follow: ['fail_next', 'saved'] }) },
+
+    { id: 'belt', q: 'What does a day of downtime cost on the baggage belt?', keys: [['baggage', 'belt', 'bhs', 'bag system', 'conveyor']], need: 1, sources: ['Asset fault logs', 'Work orders'],
+      a: () => ({ direct: `<b>${AUD(bhs.downtime_cost_day)} a day</b> for ${bhs.id} in T1 make-up B2, from re-handling, delayed departures and staff overtime. ${bhs.signal}, which historically precedes bearing failure within 3 to 5 weeks. The fix is <b>AUD 4.8k</b> and a 4 hour night window.`,
+        evidence: [ev(`Bearing temperature trend and the 2023 B1 failure (identical signature, 4 days of disruption)`, 'Asset fault logs'), ev(`Bearings in stock; 4 hour job`, 'Work orders')],
+        action: `Replace the drive bearings Thursday night 23:00 to 03:00.`, follow: ['fail_next', 'saved'] }) },
+
+    { id: 'saved', q: 'How much has predictive maintenance saved us?', keys: [['save', 'saving', 'avoid', 'roi', 'return', 'benefit', 'worth'], ['maintenance', 'predictive', 'asset', 'equipment', 'platform', 'so far']], need: 2, sources: ['Work orders', 'Asset fault logs'],
+      a: () => ({ direct: `About <b>${AUD(D.assets_summary.avoided_downtime_cost_90d)} in the last 90 days</b>: 7 assets were fixed before they failed, avoiding an estimated 11 days of unplanned downtime and 6 emergency call-outs. On the workforce side the roster saves about ${fmt(w.annual_officer_hours_saved)} officer hours a year, and bundled lighting maintenance saves ${AUD(fc.lighting.saving)} per round.`,
+        evidence: [ev(`7 pre-emptive work orders closed, 90 days; each linked to a telemetry alert`, 'Work orders'), ev(`Downtime cost per asset from the 2024 to 2025 incident history`, 'Asset fault logs')],
+        action: `Present the 90 day figure with the four open recommendations; together they are worth a further AUD 1.3M of avoided downtime.`, follow: ['fail_next', 'ratio'] }) },
+
+    { id: 'restrooms', q: 'Which restrooms are behind on cleaning?', keys: [['restroom', 'bathroom', 'toilet', 'clean', 'amenities', 'washroom']], need: 1, sources: ['RFID cleaning scans', 'Door counters'],
+      a: () => ({ direct: `<b>${rrBehind.length} of 12</b>: ${rrBehind.map(x => `<b>${x.name}</b> (${x.cleans_required - x.cleans_verified} behind, ${fmt(x.uses_today)} uses)`).join(', ')}. Verified compliance is ${fc.compliance_pct}% for the day. The gap is on the 12:00 to 14:00 crew handover; RR-07 shows as done on the paper log but no tagged equipment scanned its touch point since ${fc.restrooms[6].last_clean}.`,
+        evidence: rrBehind.map(x => ev(`${x.id} ${x.name}: ${x.cleans_required} due, ${x.cleans_verified} verified, last verified ${x.last_clean}`, 'RFID cleaning scans')).concat([ev(`Usage from door counters; a clean is due every 250 uses or 2 hours`, 'Door counters')]),
+        chart: C.hbars({ lw: '13rem', max: 100, items: [...fc.restrooms].sort((a, b) => a.compliance_pct - b.compliance_pct).slice(0, 6).map(x => ({ label: x.name, sub: fmt(x.uses_today) + ' uses', value: x.compliance_pct, color: healthCol(x.compliance_pct), text: x.compliance_pct + '%' })) }),
+        action: `Send the T2 crew to RR-07 now, then RR-08. Shift the handover to 13:30 so it does not fall in the post-lunch usage peak.`, follow: ['cleaning_capacity', 'lights'] }) },
+
+    { id: 'cleaning_capacity', q: 'Can the cleaning crew cover the long weekend?', keys: [['clean'], ['weekend', 'friday', 'sunday', 'capacity', 'enough', 'cover', 'holiday', 'crew']], need: 2, sources: ['RFID cleaning scans', 'Door counters', 'Flight schedule (AODB)'],
+      a: () => { const f = fc.cleaning_forecast; const over = f.filter(d => d.required > d.capacity); return ({ direct: `<b>Not on ${over.map(d => d.dow).join(' and ')}.</b> Required cleans are ${over.map(d => `${d.required} on ${d.dow}`).join(' and ')} against crew capacity of ${f[0].capacity}. One extra 6 hour shift on each of those days closes the gap. The other days are within capacity.`,
+        evidence: [ev(`Cleans required scale with passengers per zone; Friday ${fmt(fri.total)} and Sunday ${fmt(sun.total)} passengers`, 'Flight schedule (AODB)'), ev(`Crew capacity 132 verified cleans per day at current staffing`, 'RFID cleaning scans'), ev(`T1 landside restrooms run 30% under their usage trigger and could be de-prioritised`, 'Door counters')],
+        chart: C.bars({ labels: f.map(d => d.dow + ' ' + d.date.slice(8)), hline: { y: f[0].capacity, label: 'Capacity ' + f[0].capacity, color: '#16A34A' }, series: [{ values: f.map(d => d.required), color: '#16A34A', colors: f.map(d => d.required > d.capacity ? '#DC2626' : '#16A34A'), valueLabels: true }] }),
+        action: `Add one 6 hour cleaning shift Friday and Sunday, 11:00 to 17:00, focused on T2 airside.`, follow: ['restrooms', 'staff_weekend'] }); } },
+
+    { id: 'lights', q: 'How much can we save on the T2 light globe replacement?', keys: [['light', 'globe', 'bulb', 'lamp', 'ceiling', 'ewp', 'lighting']], need: 1, sources: ['Asset fault logs', 'Work orders'],
+      a: () => { const L = fc.lighting; return ({ direct: `<b>${AUD(L.saving)} this round.</b> ${L.failed} high-bay fittings have failed and the model predicts ${L.predicted_fail_30d} more by mid October, mostly from the 2021 batch. Six separate call-outs with an elevating work platform each time cost about AUD 11.1k; one bundled 2 day visit costs AUD 3.7k. Over a year the bundled cycle saves around AUD 40k.`,
+        evidence: [ev(`EWP hire ${AUD(L.ewp_day_cost)} a day plus 2 electricians; the ceiling cannot be reached by ladder`, 'Work orders'), ev(`Failure clustering by install batch, 2021 batch at 5.5 years mean life`, 'Asset fault logs')],
+        chart: C.hbars({ lw: '13rem', items: [{ label: '6 separate call-outs', value: 11100, color: '#DC2626', text: 'AUD 11.1k' }, { label: 'One bundled visit', value: 3700, color: '#16A34A', text: 'AUD 3.7k' }] }),
+        action: `Book one 2 day EWP hire for 12 to 13 October and replace all 54 fittings in that visit.`, follow: ['windows', 'saved'] }); } },
+
+    { id: 'windows', q: 'Should we wash the windows this month?', keys: [['window', 'glazing', 'glass', 'facade', 'wash']], need: 1, sources: ['Complaints', 'Weather', 'Work orders'],
+      a: () => ({ direct: `<b>Wash the north face only, and move off the fixed 8 week cycle.</b> ${fc.windows.complaints_30d} complaints in 30 days cluster on the north face after two dust events; the south and east faces have had none since the ${fc.windows.last_wash.split('-').reverse().join('/')} wash. A trigger model (complaints, rain, dust days) gives a 10 to 14 week cycle and saves about AUD 38k a year.`,
+        evidence: [ev(`Complaint locations: 11 of 14 north face, all within 4 days of a dust event`, 'Complaints'), ev(`Two dust events since the last wash; 3 rain days`, 'Weather'), ev(`Full wash costs AUD 21k; north face alone AUD 6.5k`, 'Work orders')],
+        action: `Order a north face wash this week. Approve the trigger-based schedule from October.`, follow: ['lights', 'saved'] }) },
+
+    { id: 'retail_missed', q: 'Where is retail revenue being missed?', keys: [['retail', 'revenue', 'spend', 'commercial', 'shop', 'food', 'sales', 'tenant'], ['miss', 'gap', 'opportunit', 'lost', 'unserved', 'improve', 'where', 'more']], need: 2, sources: ['Tenant POS', 'Wi-Fi and camera counts', 'Door counters'],
+      a: () => ({ direct: `<b>T2 pier A.</b> ${fmt(pierA.footfall)} passengers a day dwell there for ${pierA.dwell_min} minutes, the longest dwell in the airport, with nothing to buy. At the T2 average of AUD 13.20 per passenger that is about <b>AUD 17k a day</b>, or AUD 2.8M a year if a pop-up recovers 45% of it. The second gap is the advertising panel at the T2 entrance, where only 58% of passengers pass and they are walking fast.`,
+        evidence: [ev(`Pier A dwell ${pierA.dwell_min} min, conversion 0%; pier B food court dwell 24 min, conversion 44%, spend AUD 13.20`, 'Tenant POS'), ev(`Today ${AUD(r.revenue_today)} across 6 zones, AUD ${r.revenue_per_pax.toFixed(2)} per departing passenger`, 'Tenant POS'), ev(`SP3 exit corridor: 94% of T2 passengers pass at 0.9 m/s`, 'Wi-Fi and camera counts')],
+        chart: C.hbars({ lw: '15rem', items: r.zones.map(z => ({ label: z.zone, sub: `${z.dwell_min} min dwell, ${z.conversion_pct}% convert`, value: z.revenue_today, color: z.revenue_today ? '#DB2777' : '#DC2626', text: z.revenue_today ? AUD(z.revenue_today) : 'no offer' })) }),
+        action: `Offer gate 21 to a pop-up tenant for the school holidays as a live test. Move the primary ad panel to the SP3 exit corridor at the next contract break.`, follow: ['ads', 'retail_forecast'] }) },
+
+    { id: 'ads', q: 'Where should we put advertising?', keys: [['advert', 'ads', 'signage', 'panel', 'promotion', 'attention', 'billboard']], need: 1, sources: ['Wi-Fi and camera counts'],
+      a: () => ({ direct: `<b>The SP3 exit corridor.</b> 94% of T2 passengers pass it at a slow 0.9 m/s just after screening, when attention is highest. The current primary panel at the T2 entrance is seen by 58% of passengers walking at 1.4 m/s. Moving it is modelled at <b>+62% impressions</b> at the same rate card, about AUD 410k a year.`,
+        evidence: [ev(`Pass rates and walking speeds by point, 30 day average`, 'Wi-Fi and camera counts'), ev(`Retail industry attention model: dwell and pace weighted`, 'Wi-Fi and camera counts')],
+        chart: C.hbars({ lw: '15rem', max: 100, items: [{ label: 'SP3 exit corridor', sub: '0.9 m/s', value: 94, color: '#16A34A', text: '94%' }, { label: 'T1 airside food entrance', sub: '1.0 m/s', value: 71, color: '#DB2777', text: '71%' }, { label: 'T2 entrance (current)', sub: '1.4 m/s', value: 58, color: '#F59E0B', text: '58%' }, { label: 'Gate 21 lounge', sub: 'seated', value: 22, color: '#94A3B8', text: '22%' }] }),
+        action: `Relocate the primary panel at the next contract break; use gate 21 for a seated-dwell format instead.`, follow: ['retail_missed', 'retail_forecast'] }) },
+
+    { id: 'retail_forecast', q: 'What is the retail revenue forecast this week?', keys: [['retail', 'revenue', 'spend', 'sales', 'commercial'], ['forecast', 'week', 'friday', 'weekend', 'expect', 'next 7', 'predict']], need: 2, sources: ['Tenant POS', 'Flight schedule (AODB)'],
+      a: () => ({ direct: `<b>${AUD(r.forecast_next7.reduce((a, d) => a + d.revenue, 0))} over the next 7 days</b>, with Friday the biggest day at ${AUD(r.forecast_next7[1].revenue)} and Sunday ${AUD(r.forecast_next7.find(d => d.dow === 'Sun').revenue)}. That assumes today's AUD ${r.revenue_per_pax.toFixed(2)} per passenger holds; holiday leisure passengers typically spend 6 to 8% more, so this is conservative.`,
+        evidence: [ev(`Today ${AUD(r.revenue_today)} across 6 zones`, 'Tenant POS'), ev(`Passenger forecast average ${fmt(D.avg_next7)} a day, Friday ${fmt(fri.total)}`, 'Flight schedule (AODB)')],
+        chart: C.bars({ labels: r.forecast_next7.map(dayLabel), yFmt: v => C.k(v), series: [{ values: r.forecast_next7.map(d => d.revenue), color: '#DB2777', valueLabels: true }] }),
+        action: `Send tenants the hourly footfall forecast so they staff the 06:00 and 17:00 banks on Friday.`, follow: ['retail_missed', 'pax_week'] }) },
+
+    { id: 'disruption', q: 'What is the impact of the MA 412 delay?', keys: [['ma 412', 'ma412', 'delay', 'late', 'singapore', 'disrupt', 'cascade', 'knock-on', 'knock on', 'flight']], need: 1, sources: ['Flight schedule (AODB)', 'Roster and EA rules', 'RFID cleaning scans', 'Tenant POS'],
+      a: () => ({ direct: `MA 412 arrives 16:15 instead of 15:20 with 186 passengers, 64 transferring. Left alone: <b>gate 24 is double-booked</b> with PV 55 at 16:40, the transfers land in the 17:00 SP3 peak and push wait to <b>13.8 min</b> for about 620 passengers, and 2 connections are predicted to be missed. Five actions, all within existing staff and gates, hold the KPI at 9.1 min for a net cost of about <b>AUD 140</b>.`,
+        evidence: dz.cascade.map(c => ev(`${c.area}: ${c.effect}`, c.area === 'Gate' ? 'Flight schedule (AODB)' : c.area === 'Cleaning' ? 'RFID cleaning scans' : c.area === 'Retail' ? 'Tenant POS' : 'Roster and EA rules')),
+        action: dz.cascade.map(c => `${c.step}. ${c.action}`).join('<br>'), follow: ['kpi_today', 'flights', 'uncover'] }) },
+
+    { id: 'flights', q: 'Which flights are delayed this afternoon?', keys: [['flight', 'arrival', 'inbound', 'schedule', 'landing'], ['which', 'list', 'today', 'afternoon', 'late', 'delayed', 'on time']], need: 1, sources: ['Flight schedule (AODB)'],
+      a: () => ({ direct: `Two: <b>MA 412 from Singapore</b>, 55 minutes late (estimated 16:15, 186 passengers, 64 transfers) and <b>MA 220 from Brisbane</b>, 10 minutes late (16:20, no transfers). The other three arrivals between 15:00 and 17:00 are on time. Only MA 412 has downstream impact.`,
+        evidence: D.flights.map(f => ev(`${f.flt} ${f.from}: sched ${f.sched}, est ${f.est}, gate ${f.gate}, ${f.pax} pax${f.transfer ? `, ${f.transfer} transfer` : ''}`, 'Flight schedule (AODB)')),
+        action: `Action the MA 412 cascade. MA 220 needs nothing.`, follow: ['disruption', 'kpi_today'] }) },
+
+    { id: 'dwell', q: 'Where do passengers spend the most time?', keys: [['dwell', 'spend time', 'most time', 'how long', 'journey', 'bottleneck', 'slowest', 'longest', 'stuck', 'spend the most']], need: 1, sources: ['Wi-Fi and camera counts', 'Car park systems', 'Screening lane telemetry'],
+      a: () => ({ direct: `<b>Airside, 52 minutes</b> median, which is commercial time rather than a problem. Of the queue stages, <b>check-in at 9 minutes</b> is the only one over target (8); screening queue is 7.5 against a 10 minute KPI and kerb to terminal is 6. Gate wait at 18 minutes is 3 over target because boarding starts late on the 17:00 bank.`,
+        evidence: D.journey.dwell.map(z => ev(`${z.zone}: ${z.minutes} min (target ${z.target})`, z.zone.includes('Screening') ? 'Screening lane telemetry' : z.zone.includes('Kerb') ? 'Car park systems' : 'Wi-Fi and camera counts')),
+        chart: C.hbars({ lw: '13rem', max: 60, items: D.journey.dwell.map(z => ({ label: z.zone, sub: 'target ' + z.target, value: z.minutes, color: z.status === 'good' ? '#16A34A' : z.status === 'watch' ? '#F59E0B' : '#2563EB', text: z.minutes + ' min' })) }),
+        action: `Open a second bag-drop desk for the 06:00 bank on Friday; that is where the check-in queue forms.`, follow: ['retail_missed', 'pax_week'] }) },
+
+    { id: 'arrive', q: 'How early do passengers arrive at screening?', keys: [['early', 'arrive', 'before departure', 'before their flight', 'arrival profile', 'show up', 'turn up']], need: 1, sources: ['Passenger counts', 'Flight schedule (AODB)'],
+      a: () => ({ direct: `<b>58% arrive 45 to 90 minutes before departure</b>; 20% earlier than that and 22% later. International passengers skew earlier (median 82 min) and domestic later (median 58 min). This spread is why lane demand per hour is far lower than the flight schedule alone suggests, and it is the basis of the roster.`,
+        evidence: D.journey.arrival_profile.map(a => ev(`${a.bucket} min before departure: ${a.pct}%`, 'Passenger counts')),
+        chart: C.bars({ labels: D.journey.arrival_profile.map(a => a.bucket + ' min'), yFmt: v => v + '%', series: [{ values: D.journey.arrival_profile.map(a => a.pct), color: '#7C3AED', valueLabels: true }] }),
+        action: `No action; this profile has been stable within 2 points for 12 months.`, follow: ['busiest_hour', 'ratio'] }) },
+
+    { id: 'trained', q: 'What data are you trained on?', keys: [['trained', 'training', 'what data', 'data source', 'how do you know', 'where does', 'which systems', 'what do you know', 'what can you', 'help me with', 'capabilit', 'hello', 'hi', 'hey', 'who are you', 'what are you']], need: 1, sources: SOURCES.slice(0, 6),
+      a: () => ({ direct: `I am a small language model tuned on <b>${D.airport.training_months} months of ${D.airport.code} operational data</b> from ${D.airport.data_sources} systems, plus this airport's EA, KPI definitions and asset registers. I do not draw on general internet knowledge to answer operational questions; every figure comes from a named source and I show it under each answer.`,
+        evidence: SOURCES.map(s => ev(s, 'source')),
+        action: `Ask about anything on the screens: passengers, screening, roster, assets, cleaning, retail or a disruption. I answer with numbers, the evidence and a recommended action.`, follow: ['attention', 'uncover', 'fail_next'] }) },
+  ];
+
+  const norm = s => ' ' + s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  const hasKey = (t, k) => { const e = k.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return new RegExp('\\b' + e + (k.length <= 3 ? '\\b' : '')).test(t); };
+  function match(q) {
+    const t = norm(q); let best = null, bs = 0;
+    BANK.forEach(b => {
+      const hit = b.keys.filter(g => g.some(k => hasKey(t, k))).length;
+      const score = hit >= b.need ? hit + hit / b.keys.length : 0;
+      if (score > bs) { bs = score; best = b; }
+    });
+    return best;
+  }
+
+  const fallback = q => ({ direct: `I do not hold data that answers that precisely. I cover this airport's passengers, screening, roster, assets, cleaning, retail and disruptions for the last 18 months and the next 7 days. Here are the closest questions I can answer with evidence.`, evidence: [], follow: ['attention', 'kpi_today', 'uncover', 'fail_next', 'restrooms', 'retail_missed'] });
+
+  function renderAnswer(a) {
+    const src = ev => `<span class="src">${esc(ev.s)}</span>`;
+    return `<div class="ans reveal">
+      <div class="direct">${a.direct}</div>
+      ${a.evidence && a.evidence.length ? `<div class="sec"><h5>Evidence</h5><div class="ev">${a.evidence.map(e => `<div><span>${e.t}</span>${src(e)}</div>`).join('')}</div></div>` : ''}
+      ${a.chart ? (a.chart.includes('chart-slot') ? `<div class="sec"><div class="chart">${a.chart}</div></div>` : `<div class="sec">${a.chart}</div>`) : ''}
+      ${a.action ? `<div class="sec act"><h5>Recommended action</h5><p>${a.action}</p></div>` : ''}
+      ${a.conf ? `<div class="conf">${a.conf}</div>` : ''}
+      ${a.follow ? `<div class="fu">${a.follow.map(id => { const b = BANK.find(x => x.id === id); return b ? `<button onclick="ASK.ask('${esc(b.q).replace(/'/g, '&#39;')}')">${esc(b.q)}</button>` : ''; }).join('')}</div>` : ''}
+    </div>`;
+  }
+
+  function page() {
+    const sugg = ['attention', 'kpi_today', 'uncover', 'fail_next', 'lane_out', 'restrooms', 'retail_missed', 'disruption'];
+    const cols = { attention: '#4F46E5', kpi_today: '#7C3AED', uncover: '#0D9488', fail_next: '#D97706', lane_out: '#7C3AED', restrooms: '#16A34A', retail_missed: '#DB2777', disruption: '#EA580C' };
+    return `<div class="askpage">
+      <div class="side">
+        <div class="trained"><b>${D.airport.code} operations model</b>Trained on ${D.airport.training_months} months of this airport's data across ${D.airport.data_sources} systems. Answers are grounded in named sources, not the open internet.<div class="srcs">${SOURCES.slice(0, 8).map(s => `<span>${s.split(' (')[0]}</span>`).join('')}<span>+${SOURCES.length - 8} more</span></div></div>
+        <h4>Try asking</h4>
+        ${sugg.map(id => { const b = BANK.find(x => x.id === id); return `<button class="q" style="--qc:${cols[id]}" onclick="ASK.ask('${esc(b.q).replace(/'/g, '&#39;')}')">${esc(b.q)}</button>`; }).join('')}
+      </div>
+      <div class="thread">
+        <div class="msgs" id="msgs">
+          <div class="msg a"><div class="av">AI</div><div class="ans"><div class="direct">Good afternoon. It is ${D.airport.now} on ${D.airport.today_label}. Ask me anything about today's operation or the week ahead. I will answer with the numbers, where they came from, and what I would do.</div></div></div>
+        </div>
+        <div class="inp"><input id="askin" placeholder="Ask anything about the airport, in plain language" autocomplete="off"><button onclick="ASK.submit()">Ask</button><button class="clr" onclick="ASK.reset()" title="Start again">Clear</button></div>
+      </div>
+    </div>`;
+  }
+  function mount() { const i = $('#askin'); i.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); }); setTimeout(() => i.focus(), 50); }
+  function submit() { const i = $('#askin'); const q = i.value.trim(); if (!q) return; i.value = ''; ask(q); }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function ask(q) {
+    const m = $('#msgs'); if (!m) return;
+    m.insertAdjacentHTML('beforeend', `<div class="msg u">${esc(q)}</div>`);
+    const b = match(q);
+    const steps = (b ? b.sources : ['Passenger counts', 'Roster and EA rules']).slice(0, 4);
+    const id = 'th' + Date.now();
+    m.insertAdjacentHTML('beforeend', `<div class="msg a" id="${id}"><div class="av">AI</div><div class="think">${steps.map((s, i) => `<div style="animation-delay:${i * .35}s"><i></i>Reading ${esc(s)}</div>`).join('')}<div style="animation-delay:${steps.length * .35}s"><i></i>Building the answer</div></div></div>`);
+    m.scrollTop = m.scrollHeight;
+    const rows = document.querySelectorAll(`#${id} .think div`);
+    for (let i = 0; i < rows.length; i++) { await sleep(i === 0 ? 500 : 420); rows[i].classList.add('done'); }
+    await sleep(350);
+    const a = b ? b.a() : fallback(q);
+    $('#' + id).innerHTML = `<div class="av">AI</div>${renderAnswer(a)}`;
+    C.mount($('#' + id));
+    m.scrollTop = $('#' + id).offsetTop - 20;
+  }
+  function reset() { go('home'); setTimeout(() => go('ask'), 30); }
+  return { page, mount, submit, ask, match, reset, BANK };
+})();
+</script>
+<script>/* Data connection settings: shows how the platform is repointed at another airport's data estate. Simulated; nothing leaves the browser. */
+const CFG = (() => {
+  const S = { current: { kind: 'embedded', label: 'Meridian demo dataset (embedded)' }, tab: 'source', src: 'databricks', auth: null, tested: false, testing: false, name: '' };
+
+  const SRC = {
+    databricks: { label: 'Databricks', sub: 'Unity Catalog, SQL warehouse', mono: 'DB', color: '#E4572E',
+      fields: [['Workspace URL', 'https://adb-1234567890123456.7.azuredatabricks.net', 'url'], ['SQL warehouse HTTP path', '/sql/1.0/warehouses/9f2c1a3b4d5e6f70'], ['Catalog', 'airport_ops'], ['Schema', 'curated']],
+      auth: { pat: ['Personal access token', [['Token', 'dapi************************', 'password']]], sp: ['Service principal', [['Tenant ID', '00000000-0000-0000-0000-000000000000'], ['Client ID', 'app registration ID'], ['Client secret', '', 'password']]], oauth: ['OAuth M2M', [['Client ID', ''], ['Client secret', '', 'password']]] },
+      host: h => (h.match(/https?:\/\/([^/]+)/) || [])[1] },
+    fabric: { label: 'Microsoft Fabric', sub: 'Lakehouse or Warehouse SQL endpoint', mono: 'MF', color: '#0078D4',
+      fields: [['Tenant ID', '00000000-0000-0000-0000-000000000000'], ['Workspace', 'Airport Operations'], ['Lakehouse / Warehouse', 'lh_airport_ops'], ['SQL endpoint', 'xxxxxxxx.datawarehouse.fabric.microsoft.com', 'url']],
+      auth: { sp: ['Service principal', [['Application (client) ID', ''], ['Client secret', '', 'password']]], user: ['User account', [['User principal name', 'ops.integration@airport.example'], ['Password', '', 'password']]], mi: ['Managed identity', [['Identity resource ID', '/subscriptions/.../userAssignedIdentities/ai-platform']]] },
+      host: h => h },
+    snowflake: { label: 'Snowflake', sub: 'Warehouse, database, role', mono: 'SF', color: '#29B5E8',
+      fields: [['Account identifier', 'xy12345.ap-southeast-2'], ['Warehouse', 'OPS_WH'], ['Database', 'AIRPORT_OPS'], ['Role', 'PLATFORM_READER']],
+      auth: { user: ['User and password', [['User', 'PLATFORM_SVC'], ['Password', '', 'password']]], key: ['Key pair', [['User', 'PLATFORM_SVC'], ['Private key (PEM)', '-----BEGIN PRIVATE KEY-----', 'password']]], oauth: ['OAuth', [['Client ID', ''], ['Client secret', '', 'password']]] },
+      host: h => h + '.snowflakecomputing.com' },
+    synapse: { label: 'Azure Synapse / SQL', sub: 'Dedicated or serverless SQL', mono: 'AZ', color: '#5C2D91',
+      fields: [['Server', 'airport-ops.sql.azuresynapse.net', 'url'], ['Database', 'ops_curated'], ['Port', '1433'], ['Schema', 'dbo']],
+      auth: { sql: ['SQL login', [['Login', 'platform_reader'], ['Password', '', 'password']]], sp: ['Entra ID service principal', [['Tenant ID', ''], ['Client ID', ''], ['Client secret', '', 'password']]] },
+      host: h => h },
+    bigquery: { label: 'Google BigQuery', sub: 'Project and dataset', mono: 'BQ', color: '#4285F4',
+      fields: [['Project ID', 'airport-ops-prod'], ['Dataset', 'ops_curated'], ['Location', 'australia-southeast1'], ['Billing project', 'airport-ops-prod']],
+      auth: { sa: ['Service account key', [['JSON key', '{ "type": "service_account", ... }', 'password']]], oauth: ['OAuth', [['Client ID', ''], ['Client secret', '', 'password']]] },
+      host: h => 'bigquery.googleapis.com' },
+    redshift: { label: 'Amazon Redshift', sub: 'Cluster or serverless', mono: 'RS', color: '#8C4FFF',
+      fields: [['Endpoint', 'ops-cluster.abc123.ap-southeast-2.redshift.amazonaws.com', 'url'], ['Database', 'airport_ops'], ['Port', '5439'], ['Schema', 'curated']],
+      auth: { user: ['User and password', [['User', 'platform_reader'], ['Password', '', 'password']]], iam: ['IAM role', [['Role ARN', 'arn:aws:iam::123456789012:role/platform-reader']]] },
+      host: h => h },
+    hana: { label: 'SAP HANA', sub: 'Direct or via SAP BW', mono: 'SA', color: '#0FAAFF',
+      fields: [['Host', 'hana.airport.example', 'url'], ['Port', '30015'], ['Schema', 'OPS'], ['Client', '100']],
+      auth: { user: ['User and password', [['User', 'PLATFORM_READ'], ['Password', '', 'password']]] },
+      host: h => h },
+    rest: { label: 'REST API / file drop', sub: 'AODB, SCADA, vendor exports', mono: 'API', color: '#0F172A',
+      fields: [['Base URL', 'https://api.airport.example/v2', 'url'], ['Poll interval', '5 min'], ['SFTP drop (optional)', 'sftp://drop.airport.example/ops'], ['File format', 'CSV / Parquet / JSON']],
+      auth: { key: ['API key', [['Header name', 'X-API-Key'], ['Key', '', 'password']]], basic: ['Basic auth', [['User', ''], ['Password', '', 'password']]], oauth: ['OAuth client credentials', [['Token URL', ''], ['Client ID', ''], ['Client secret', '', 'password']]] },
+      host: h => (h.match(/https?:\/\/([^/]+)/) || [])[1] },
+  };
+
+  const MAP = [
+    ['Flight schedule (AODB)', 'ops.flights_aodb', '1 min', 'Mapped'], ['Passenger counts', 'ops.pax_counts_hourly', '15 min', 'Mapped'], ['Screening lane telemetry', 'security.lane_events', '1 min', 'Mapped'],
+    ['Roster and EA rules', 'workforce.roster_shifts, workforce.ea_rules', '1 h', 'Mapped'], ['CT and X-ray telemetry', 'security.equipment_telemetry', '5 min', 'Mapped'], ['Asset fault logs', 'maint.fault_log', '15 min', 'Mapped'],
+    ['Work orders', 'maint.work_orders', '15 min', 'Mapped'], ['RFID cleaning scans', 'facilities.rfid_scans', '1 min', 'Mapped'], ['Door counters', 'facilities.door_counts', '5 min', 'Mapped'],
+    ['Tenant POS', 'commercial.pos_transactions', '15 min', 'Mapped'], ['Wi-Fi and camera counts', 'ops.presence_counts', '5 min', 'Mapped'], ['Car park systems', 'landside.carpark_events', '5 min', 'Mapped'],
+    ['Weather', 'ext.bom_observations', '10 min', 'Mapped'], ['Complaints', 'cx.complaints', '1 h', 'Mapped'],
+  ];
+
+  const tabs = [['source', 'Data source'], ['mapping', 'Source mapping'], ['profile', 'Airport profile'], ['model', 'Model and residency']];
+
+  function open() { S.tab = 'source'; S.tested = false; render(); $('#cfg').classList.add('on'); }
+  function close() { $('#cfg').classList.remove('on'); }
+  function current() { return S.current; }
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); setTimeout(() => t.classList.remove('on'), 3200); }
+
+  function render() {
+    const cur = S.current;
+    $('#cfg').innerHTML = `<div class="cfg" onclick="event.stopPropagation()">
+      <div class="side"><h4>Settings<small>Data connections, mapping, model</small></h4>
+        ${tabs.map(([id, l]) => `<button class="${S.tab === id ? 'active' : ''}" onclick="CFG.tab('${id}')">${l}</button>`).join('')}
+        <div class="st"><b>&#9679; Connected</b><br>${esc(cur.label)}<br>Last sync ${D.airport.now}, 14 of 14 sources mapped</div>
+      </div>
+      <div class="mainc">${{ source: tabSource, mapping: tabMapping, profile: tabProfile, model: tabModel }[S.tab]()}</div>
+    </div>`;
+    $('#cfg').onclick = close;
+  }
+
+  function tabSource() {
+    const s = SRC[S.src]; if (!S.auth || !s.auth[S.auth]) S.auth = Object.keys(s.auth)[0];
+    const auth = s.auth[S.auth];
+    return `<div class="head"><div><h3>Connect a data source</h3><p>Point the platform at another airport's data estate. Read-only access is all it needs; the model is retrained on what it finds.</p></div><button class="x" onclick="CFG.close()">&times;</button></div>
+    <div class="bodyc">
+      <div class="srcgrid">${Object.entries(SRC).map(([id, x]) => `<button class="srcopt ${S.src === id ? 'active' : ''}" onclick="CFG.src('${id}')"><span class="mono" style="background:${x.color}">${x.mono}</span><span>${x.label}<small>${x.sub}</small></span></button>`).join('')}</div>
+      <div class="form">
+        <div class="f w"><label>Connection name</label><input id="cf_name" placeholder="e.g. Adelaide Airport operations lake" value="${esc(S.name)}"></div>
+        <div class="sec">${s.label} connection</div>
+        ${s.fields.map((f, i) => `<div class="f"><label>${f[0]}</label><input id="cf_f${i}" placeholder="${esc(f[1])}" ${f[2] === 'url' ? 'spellcheck="false"' : ''}></div>`).join('')}
+        <div class="sec">Authentication</div>
+        <div class="f w"><div class="seg-ctl">${Object.entries(s.auth).map(([id, a]) => `<button class="${S.auth === id ? 'active' : ''}" onclick="CFG.auth('${id}')">${a[0]}</button>`).join('')}</div></div>
+        ${auth[1].map((f, i) => `<div class="f ${auth[1].length === 1 ? 'w' : ''}"><label>${f[0]}</label><input id="cf_a${i}" type="${f[2] || 'text'}" placeholder="${esc(f[1])}" autocomplete="off"></div>`).join('')}
+        <div class="f w"><span class="hint">Secrets are held in the platform key vault inside the customer's own cloud tenancy and are never written to disk, logged or sent to a third party. The connection is tested with a read-only session before anything is saved.</span></div>
+      </div>
+      <div class="testlog" id="cf_log"><div class="dim">Connection test output will appear here.</div></div>
+    </div>
+    <div class="foot"><span class="note">Switching source triggers a mapping review and a scheduled retrain. The current dataset stays live until the new model passes evaluation.</span><button class="btn" id="cf_test" onclick="CFG.test()">Test connection</button><button class="btn primary" id="cf_save" onclick="CFG.save()" ${S.tested ? '' : 'disabled'}>Save and switch</button></div>`;
+  }
+
+  function tabMapping() {
+    return `<div class="head"><div><h3>Source mapping</h3><p>Each platform capability reads from one or more feeds. New sources are matched automatically by schema and confirmed here.</p></div><button class="x" onclick="CFG.close()">&times;</button></div>
+    <div class="bodyc"><table class="maptable"><tr><th>Platform source</th><th>Mapped feed</th><th>Refresh</th><th>Status</th></tr>${MAP.map(m => `<tr><td><b>${m[0]}</b></td><td style="font-family:ui-monospace,Menlo,monospace;font-size:.8rem">${m[1]}</td><td>${m[2]}</td><td><span class="pill on">${m[3]}</span></td></tr>`).join('')}</table></div>
+    <div class="foot"><span class="note">14 of 14 sources mapped. Unmapped sources disable the modules that depend on them rather than showing partial data.</span><button class="btn" onclick="CFG.close()">Close</button></div>`;
+  }
+
+  function tabProfile() {
+    const a = D.airport;
+    return `<div class="head"><div><h3>Airport profile</h3><p>Operating parameters the model and KPIs are evaluated against.</p></div><button class="x" onclick="CFG.close()">&times;</button></div>
+    <div class="bodyc"><div class="form">
+      <div class="f"><label>Airport name</label><input value="${esc(a.name)}"></div><div class="f"><label>IATA code</label><input value="${a.code}"></div>
+      <div class="f"><label>Time zone</label><select><option>Australia/Adelaide</option><option>Australia/Brisbane</option><option>Australia/Melbourne</option><option>Australia/Perth</option><option>Australia/Sydney</option><option>Australia/Hobart</option></select></div>
+      <div class="f"><label>Terminals</label><input value="${a.terminals.join(', ')}"></div>
+      <div class="sec">Screening and KPIs</div>
+      <div class="f"><label>Screening points</label><input value="${D.screening.map(s => s.id + ' ' + s.name + ' (' + s.lanes + ')').join(', ')}"></div>
+      <div class="f"><label>Wait time KPI</label><input value="${D.kpi.wait_target_min} min at 95th percentile"></div>
+      <div class="f"><label>Design lane throughput</label><input value="${D.kpi.lane_tph} per lane per hour (domestic), 190 (CT)"></div>
+      <div class="f"><label>Sustainable utilisation</label><input value="${Math.round(D.kpi.lane_eff * 100)}%"></div>
+      <div class="sec">Workforce rules</div>
+      <div class="f"><label>Enterprise agreement</label><input value="Aviation Security EA 2025 (uploaded 12 Mar 2026)"></div>
+      <div class="f"><label>Roster horizon</label><input value="Fortnightly, published 7 days ahead"></div>
+    </div></div>
+    <div class="foot"><span class="note">Changes here re-evaluate every KPI and recommendation on the next refresh.</span><button class="btn" onclick="CFG.close()">Cancel</button><button class="btn primary" onclick="CFG.toast('Airport profile saved. KPIs will re-evaluate on the next refresh.');CFG.close()">Save profile</button></div>`;
+  }
+
+  function tabModel() {
+    const row = (l, v) => `<div class="row" style="background:#F8FAFC"><div class="m">${l}</div><div class="s" style="font-size:.9rem;font-weight:600;text-align:right">${v}</div></div>`;
+    return `<div class="head"><div><h3>Model and data residency</h3><p>What is running, where it runs, and how it is kept current.</p></div><button class="x" onclick="CFG.close()">&times;</button></div>
+    <div class="bodyc"><div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem">
+      <div><div class="sec" style="font-size:.8rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">Operations model</div><div class="rows">
+        ${row('Model', `${D.airport.code}-ops-slm v3.2`)}${row('Base', '8B parameter SLM, domain tuned')}${row('Training data', `${D.airport.training_months} months, ${D.airport.data_sources} sources`)}${row('Last retrain', '21 Sep 2026, 02:10 (6 h 40 min)')}${row('Next scheduled', 'Weekly, Sunday 01:00')}${row('Forecast accuracy', 'MAPE 4.1% at 24 h, 7.8% at 7 days')}${row('Recommendation acceptance', '83% (last 90 days)')}
+      </div></div>
+      <div><div class="sec" style="font-size:.8rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem">Residency and control</div><div class="rows">
+        ${row('Hosting', "Customer's own cloud subscription")}${row('Region', 'Australia East (Sydney)')}${row('Data movement', 'None. Model runs next to the data')}${row('External model calls', 'None. No public LLM in the loop')}${row('Access', 'Entra ID SSO, role based')}${row('Audit', 'Every answer logs its sources and evidence')}${row('IP', 'Airport owns the trained model and data')}
+      </div></div>
+    </div>
+    <div style="margin-top:1.1rem" class="ai"><span class="sp">AI</span><div>When a new data source is connected, the platform maps feeds, trains a candidate model on the airport's history, evaluates it against the last 30 days of actuals and only then switches over. For a new airport that first pass typically takes <b>2 to 3 weeks</b> from read access to a working Overview.</div></div>
+    </div>
+    <div class="foot"><span class="note">Retraining never interrupts the live dashboards.</span><button class="btn" onclick="CFG.close()">Close</button></div>`;
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function test() {
+    if (S.testing) return; S.testing = true; S.tested = false; $('#cf_save').disabled = true;
+    const s = SRC[S.src], log = $('#cf_log'); log.innerHTML = ''; log.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const line = async (t, cls, ms) => { log.insertAdjacentHTML('beforeend', `<div class="${cls || ''}">${t}</div>`); log.scrollTop = log.scrollHeight; await sleep(ms || 420); };
+    S.name = $('#cf_name').value.trim();
+    const vals = s.fields.map((f, i) => $('#cf_f' + i).value.trim());
+    const auth = s.auth[S.auth], avals = auth[1].map((f, i) => $('#cf_a' + i).value.trim());
+    const missing = s.fields.filter((f, i) => !vals[i]).map(f => f[0]).concat(auth[1].filter((f, i) => !avals[i]).map(f => f[0]));
+    if (!S.name) missing.unshift('Connection name');
+    if (missing.length) { await line(`<span class="warn">Cannot test: ${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} required.</span>`, '', 0); S.testing = false; return; }
+    const host = s.host(vals[0]) || vals[0];
+    const a = auth[0].toLowerCase();
+    await line(`<span class="dim">$</span> platform connect --source ${S.src} --name "${esc(S.name)}" --read-only`, '', 300);
+    await line(`Resolving ${esc(host)} ... <span class="ok">ok</span> <span class="dim">(TLS 1.3, certificate valid)</span>`, '', 650);
+    await line(`Authenticating with ${a} ... <span class="ok">ok</span> <span class="dim">(${a.includes('token') || a.includes('key') ? 'expires in 89 days' : 'read-only role confirmed'})</span>`, '', 700);
+    await line(`Enumerating ${vals[2] || vals[1] || 'objects'} ... <span class="ok">14 schemas, 212 tables, 3 streaming feeds</span>`, '', 750);
+    await line(`Matching platform sources ... <span class="ok">14 of 14 matched by schema</span> <span class="dim">(2 with column renames)</span>`, '', 800);
+    await line(`Sampling row counts ... flights 1.2M, screening_events 48.3M, roster_shifts 310k, rfid_scans 9.7M`, '', 600);
+    await line(`History available: 26 months. Estimated first training: 7 h 10 min. Data leaves the tenancy: <span class="ok">no</span>`, '', 500);
+    await line(`<span class="ok">Connection test passed.</span> Save to schedule mapping review and retrain.`, '', 0);
+    S.tested = true; S.testing = false; $('#cf_save').disabled = false;
+  }
+  function save() { if (!S.tested) return; S.current = { kind: S.src, label: S.name + ' (' + SRC[S.src].label + ')' }; close(); toast(`Connected to ${S.name}. Mapping review queued; retrain scheduled for 01:00. Dashboards stay on the current model until it passes evaluation.`); render_home_src(); }
+  function render_home_src() { setConn(); }
+  return { open, close, current, toast, test, save, tab: t => { S.tab = t; render(); }, src: s => { S.src = s; S.auth = null; S.tested = false; render(); }, auth: a => { S.auth = a; S.tested = false; render(); } };
+})();
+</script>
+<div class="modal" id="cfg"></div><div class="toast" id="toast"></div>
+<script>init();</script>
+</body>
+</html>
